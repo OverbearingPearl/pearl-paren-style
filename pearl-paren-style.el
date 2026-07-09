@@ -3,7 +3,7 @@
 ;; Copyright (C) 2026 OverbearingPearl
 
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
-;; Version: 0.1.1
+;; Version: 0.1.2
 ;; Package-Requires: ((emacs "24.3"))
 ;; Keywords: lisp, tools, convenience
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style

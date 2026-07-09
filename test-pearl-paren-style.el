@@ -2,7 +2,7 @@
 ;; Copyright (C) 2026 OverbearingPearl
 
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
-;; Version: 0.1.1
+;; Version: 0.1.2
 ;; Package-Requires: ((emacs "24.3"))
 ;; Keywords: lisp, tools, convenience
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
@@ -16,33 +16,33 @@
 (require 'ert)
 (require 'pearl-paren-style)
 
-(ert-deftest test-detect-compact ()
+(ert-deftest test-pearl-paren-style-detect-compact ()
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(foo\n  (bar))")
     (should (eq (pearl-paren-style--detect) 'compact))))
 
-(ert-deftest test-detect-dangling ()
+(ert-deftest test-pearl-paren-style-detect-dangling ()
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(foo (bar)\n  )")
     (should (eq (pearl-paren-style--detect) 'dangling))))
 
-(ert-deftest test-toggle-compact-to-dangling ()
+(ert-deftest test-pearl-paren-style-toggle-compact-to-dangling ()
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(let ((x 1))\n  (foo))")
     (pearl-paren-style-toggle)
     (should (eq (pearl-paren-style--detect) 'dangling))))
 
-(ert-deftest test-toggle-dangling-to-compact ()
+(ert-deftest test-pearl-paren-style-toggle-dangling-to-compact ()
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(let ((x 1)\n      )\n  (foo)\n  )")
     (pearl-paren-style-toggle)
     (should (eq (pearl-paren-style--detect) 'compact))))
 
-(ert-deftest test-toggle-roundtrip ()
+(ert-deftest test-pearl-paren-style-toggle-roundtrip ()
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(defun f (x)\n  (+ x 1))")
@@ -50,7 +50,7 @@
     (pearl-paren-style-toggle)
     (should (eq (pearl-paren-style--detect) 'compact))))
 
-(ert-deftest test-dangling-keeps-single-line ()
+(ert-deftest test-pearl-paren-style-dangling-keeps-single-line ()
   "Single-line parens should stay compact in dangling mode."
   (with-temp-buffer
     (emacs-lisp-mode)
@@ -58,7 +58,7 @@
     (pearl-paren-style-dangling)
     (should (string= (buffer-string) "(foo) (bar)"))))
 
-(ert-deftest test-dangling-converts-multi-line ()
+(ert-deftest test-pearl-paren-style-dangling-converts-multi-line ()
   "Multi-line parens should become dangling."
   (with-temp-buffer
     (emacs-lisp-mode)
@@ -66,7 +66,7 @@
     (pearl-paren-style-dangling)
     (should (eq (pearl-paren-style--detect) 'dangling))))
 
-(ert-deftest test-dangling-alignment ()
+(ert-deftest test-pearl-paren-style-dangling-alignment ()
   "Closing paren should align with opening paren."
   (with-temp-buffer
     (emacs-lisp-mode)
