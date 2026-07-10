@@ -1,8 +1,9 @@
 ;;; test-pearl-paren-style.el --- Tests for pearl-paren-style  -*- lexical-binding: t; -*-
+
 ;; Copyright (C) 2026 OverbearingPearl
 
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
-;; Version: 0.1.2
+;; Version: 0.1.3
 ;; Package-Requires: ((emacs "24.3"))
 ;; Keywords: lisp, tools, convenience
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
