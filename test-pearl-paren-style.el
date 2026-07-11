@@ -405,13 +405,27 @@
   "Toggle should preserve spacing before trailing comments."
   (with-temp-buffer
     (emacs-lisp-mode)
-    (let ((original "(defun foo ()\n  (bar))  ; two spaces before comment"))
+    (let ((original "(defun foo ()\n  (bar))  ; two spaces before comment\n"))
       (insert original)
       (pearl-paren-style-toggle) ; to dangling
       (pearl-paren-style-toggle) ; back to compact
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
           (should (string= result original)))))))
+
+(ert-deftest test-pearl-paren-style-dangling-to-compact-with-comment-line ()
+  "Test case for the bug where dangling to compact conversion incorrectly handles comments.
+When converting from dangling to compact style, if there's a comment on the same line as
+a closing parenthesis, the conversion should properly merge the parentheses with the comment."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((original "(defun test-bug ()\n  (let ((stats '(1 2 3 4 5 6 7 8)))\n    (list\n      (nth 7 stats)  ; L6\n    )\n  )\n)\n")
+          (expected "(defun test-bug ()\n  (let ((stats '(1 2 3 4 5 6 7 8)))\n    (list\n      (nth 7 stats)  ; L6\n      )))\n"))
+      (insert original)
+      (pearl-paren-style--to-compact)
+      (let ((result (buffer-string)))
+        (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s" original result expected))
+          (should (string= result expected)))))))
 
 (provide 'test-pearl-paren-style)
 ;;; test-pearl-paren-style.el ends here

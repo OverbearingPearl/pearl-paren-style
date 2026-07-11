@@ -36,6 +36,27 @@
               (when (re-search-forward "|#" nil t)
                 (<= pos (point)))))))))
 
+(defun pearl-paren-style--line-has-comment-p ()
+  "Return non-nil if current line has a comment (starting with ;)."
+  (save-excursion
+    (beginning-of-line)
+    (let ((line-end (line-end-position)))
+      (when (search-forward ";" line-end t)
+        ;; Verify it's really a comment, not inside string
+        (not (nth 3 (syntax-ppss)))))))
+
+(defun pearl-paren-style--line-has-code-p ()
+  "Return non-nil if current line has actual code (not just parens and whitespace)."
+  (save-excursion
+    (beginning-of-line)
+    (skip-chars-forward " \t")
+    (while (and (not (eolp))
+                (or (= (char-after) ?\()
+                    (= (char-after) ?\))))
+      (forward-char)
+      (skip-chars-forward " \t"))
+    (not (eolp))))
+
 (defun pearl-paren-style--detect ()
   "Return current style: `compact', `dangling', or nil."
   (save-excursion
@@ -127,12 +148,35 @@ Single-line parens like (foo) remain unchanged."
                                    (goto-char open-pos)
                                    (not (looking-back ")" (1- (point))))))
                              (scan-error nil))))
-                ;; Check if the previous line is a comment line
-                (unless (save-excursion
-                          (forward-line -1)
-                          (back-to-indentation)
-                          (looking-at ";"))
-                  ;; Check for trailing comment
+                ;; Check if the direct previous line has a comment.
+                ;; If so, we cannot merge ) to that line to avoid ) being commented out.
+                (if (save-excursion
+                      (forward-line -1)
+                      (pearl-paren-style--line-has-comment-p))
+                    ;; Previous line has comment, adjust current line indentation
+                    ;; to match the code indentation on previous line
+                    (let ((prev-code-indent
+                           (save-excursion
+                             (forward-line -1)
+                             (beginning-of-line)
+                             (skip-chars-forward " \t")
+                             ;; If we're at code (not comment), get its column
+                             (when (and (not (eolp))
+                                        (not (= (char-after) ?\;)))
+                               (current-column))))
+                          (current-indent
+                           (save-excursion
+                             (beginning-of-line)
+                             (skip-chars-forward " \t")
+                             (current-column))))
+                      (when (and prev-code-indent
+                                 (/= current-indent prev-code-indent))
+                        (save-excursion
+                          (beginning-of-line)
+                          (delete-horizontal-space)
+                          (indent-to prev-code-indent))
+                        (setq changed t)))
+                  ;; No comment on previous line, proceed with merge
                   (let ((comment-text nil)
                         (comment-leading-spaces "")
                         (after-paren (point))
@@ -166,12 +210,13 @@ Single-line parens like (foo) remain unchanged."
                       (setq changed t))))))))
         (when changed
           (goto-char (point-max)))))
-    ;; Delete trailing blank lines at end of buffer
+    ;; Delete trailing blank lines at end of buffer, but ensure file ends with newline
     (save-excursion
       (goto-char (point-max))
       (skip-chars-backward "\n")
       (when (< (point) (point-max))
-        (delete-region (point) (point-max))))))
+        (delete-region (point) (point-max))
+        (insert "\n")))))
 
 ;;;###autoload
 (defun pearl-paren-style-toggle ()
