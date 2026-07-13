@@ -4,7 +4,7 @@
 
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
 ;; Version: 0.1.6
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "25.1"))
 ;; Keywords: lisp, tools, convenience
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
 
