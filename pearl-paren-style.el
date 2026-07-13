@@ -27,14 +27,21 @@
 
 (defun pearl-paren-style--in-string-or-comment-p ()
   "Return non-nil if point is inside a string or comment."
-  (or (nth 8 (syntax-ppss))  ; inside comment or string
-      (save-excursion
-        (let ((pos (point)))
-          (when (re-search-backward "#|" nil t)
-            (let ((start (point)))
-              (goto-char start)
-              (when (re-search-forward "|#" nil t)
-                (<= pos (point)))))))))
+  (let ((state (syntax-ppss)))
+    (or (nth 3 state)    ; inside string
+        (nth 4 state)    ; inside comment
+        ;; Check for character literal starting with ?\
+        (save-excursion
+          (and (>= (point) 2)
+               (eq (char-before) ?\\)
+               (eq (char-before (1- (point))) ??)))
+        (save-excursion
+          (let ((pos (point)))
+            (when (re-search-backward "#|" nil t)
+              (let ((start (point)))
+                (goto-char start)
+                (when (re-search-forward "|#" nil t)
+                  (<= pos (point))))))))))
 
 (defun pearl-paren-style--line-has-comment-p ()
   "Return non-nil if current line has a comment (starting with ;)."
@@ -315,19 +322,17 @@ Single-line parens like (foo) remain unchanged."
   "Check if parentheses are balanced in region from BEG to END.
 If BEG and END are nil, check the entire buffer.
 Return t if balanced, nil if unbalanced."
-  (condition-case err
-      (save-excursion
-        (save-restriction
-          (when (and beg end)
-            (narrow-to-region beg end))
-          ;; check-parens checks parentheses balance in the current buffer
-          ;; If parentheses are unbalanced, it throws an error
-          ;; We can catch this error and return nil
-          (save-excursion
-            (goto-char (point-min))
-            (check-parens))
-          t))  ; Return t if check-parens doesn't throw an error
-    (error nil)))  ; Return nil if check-parens throws an error
+  (condition-case nil
+      (progn
+        (if (and beg end)
+            (save-restriction
+              (narrow-to-region beg end)
+              (check-parens))
+          (check-parens))
+        t  ; If check-parens doesn't signal error, return t
+        )
+    (error nil)  ; If check-parens signals error, return nil
+    ))
 
 ;;;###autoload
 (defun pearl-paren-style-compact-region (beg end)
@@ -396,36 +401,76 @@ Return t if successful, nil if failed due to unbalanced parentheses."
 
 (defun pearl-paren-style--collect-el-files (files)
   "Collect all .el files from FILES list.
-If a directory is included, recursively collect all .el files in it."
+If a directory is included, recursively collect all .el files in it.
+Follows symbolic links."
   (cl-loop for file in files
            append (if (file-directory-p file)
-                      (directory-files-recursively file "\\.el$")
+                      (directory-files-recursively file "\\.el$" t)  ; Add t to follow symlinks
                     (when (string-match "\\.el$" file)
                       (list file)))))
 
 ;;;###autoload
 (defun pearl-paren-style-compact-files (files)
   "Convert FILES to compact style.
-FILES is a list of file paths."
+FILES is a list of file paths.
+If called interactively without Dired selection, prompt for files."
   (interactive
-   (list (dired-get-marked-files)))
+   (list (if (and (derived-mode-p 'dired-mode)
+                  (dired-get-marked-files))
+             (dired-get-marked-files)
+           (let ((selected (read-file-name "Select files (wildcards allowed): "
+                                           nil nil t nil
+                                           (lambda (name)
+                                             (or (file-directory-p name)
+                                                 (string-match "\\.el$" name))))))
+             (if (stringp selected)
+                 (if (file-directory-p selected)
+                     (list selected)
+                   (list selected))
+               selected)))))
   (pearl-paren-style-convert-files 'compact files))
 
 ;;;###autoload
 (defun pearl-paren-style-dangling-files (files)
   "Convert FILES to dangling style.
-FILES is a list of file paths."
+FILES is a list of file paths.
+If called interactively without Dired selection, prompt for files."
   (interactive
-   (list (dired-get-marked-files)))
+   (list (if (and (derived-mode-p 'dired-mode)
+                  (dired-get-marked-files))
+             (dired-get-marked-files)
+           (let ((selected (read-file-name "Select files (wildcards allowed): "
+                                           nil nil t nil
+                                           (lambda (name)
+                                             (or (file-directory-p name)
+                                                 (string-match "\\.el$" name))))))
+             (if (stringp selected)
+                 (if (file-directory-p selected)
+                     (list selected)
+                   (list selected))
+               selected)))))
   (pearl-paren-style-convert-files 'dangling files))
 
 ;;;###autoload
 (defun pearl-paren-style-convert-files (style files)
   "Convert FILES to STYLE ('compact or 'dangling).
-FILES is a list of file paths."
+FILES is a list of file paths.
+If called interactively without Dired selection, prompt for files."
   (interactive
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
-         (dired-get-marked-files)))
+         (if (and (derived-mode-p 'dired-mode)
+                  (dired-get-marked-files))
+             (dired-get-marked-files)
+           (let ((selected (read-file-name "Select files (wildcards allowed): "
+                                           nil nil t nil
+                                           (lambda (name)
+                                             (or (file-directory-p name)
+                                                 (string-match "\\.el$" name))))))
+             (if (stringp selected)
+                 (if (file-directory-p selected)
+                     (list selected)
+                   (list selected))
+               selected)))))
   (let ((el-files (pearl-paren-style--collect-el-files files)))
     (when (null el-files)
       (user-error "No .el files selected"))
@@ -439,7 +484,8 @@ FILES is a list of file paths."
                                 (message "Failed to process %s: %s" file (error-message-string err))
                                 nil))
                count success into processed
-               finally (message "Processed %d/%d file(s)" processed count)))))
+               finally do (message "Processed %d/%d file(s)" processed count)
+               finally return (> processed 0)))))
 
 ;;;###autoload
 (defun pearl-paren-style-dwim ()
