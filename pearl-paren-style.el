@@ -42,8 +42,9 @@
     (beginning-of-line)
     (let ((line-end (line-end-position)))
       (when (search-forward ";" line-end t)
-        ;; Verify it's really a comment, not inside string
-        (not (nth 3 (syntax-ppss)))))))
+        ;; Verify it's really a comment, not inside string or character literal
+        (nth 4 (syntax-ppss))  ; returns non-nil if in comment
+        ))))
 
 (defun pearl-paren-style--line-has-code-p ()
   "Return non-nil if current line has actual code (not just parens and whitespace)."
@@ -154,8 +155,7 @@ Single-line parens like (foo) remain unchanged."
                         (let ((after-paren (point)))
                           (skip-chars-forward " \t" end-of-line)
                           (when (and (< (point) end-of-line)
-                                     (= (char-after (point)) ?\;)
-                                     )
+                                     (= (char-after (point)) ?\;))
                             (setq comment-text (buffer-substring after-paren end-of-line))
                             (delete-region after-paren end-of-line))))
                       (let ((closing-paren ")"))
@@ -227,8 +227,7 @@ Single-line parens like (foo) remain unchanged."
                       (let ((space-start (point)))
                         (skip-chars-forward " \t" line-end)
                         (when (and (< (point) line-end)
-                                   (= (char-after) ?\;)
-                                   )
+                                   (= (char-after) ?\;))
                           (setq comment-leading-spaces (buffer-substring space-start (point)))
                           (setq comment-text (buffer-substring (point) line-end))
                           ;; If there is a comment, rest-of-line should only contain the closing paren

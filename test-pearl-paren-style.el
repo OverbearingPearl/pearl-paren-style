@@ -659,6 +659,33 @@ a closing parenthesis, the conversion should properly merge the parentheses with
           (should (string-match-p "?\\\\(" result))
           (should (string-match-p "?\\\\)" result)))))))
 
+(ert-deftest test-pearl-paren-style-char-literal-semicolon ()
+  "Character literal ?\; should not be treated as comment start."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((original "(list ?\\; ?a)\n(foo\n  (bar)\n  )"))
+      (insert original)
+      (pearl-paren-style--to-compact)
+      (let ((result (buffer-string)))
+        (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
+          ;; Should merge ) with (bar) line despite ?\; on previous line
+          (should (string-match-p (regexp-quote "(list ?\\; ?a)") result))
+          (should (string-match-p "(foo\n  (bar))" result)))))))
+
+(ert-deftest test-pearl-paren-style-char-literal-semicolon-in-code ()
+  "Character literal ?\; in code should not prevent compact conversion."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((original "(defun test ()\n  (let ((x ?\\;))\n    (process x)\n  )\n)")
+          (expected "(defun test ()\n  (let ((x ?\\;))\n    (process x)))\n"))
+      (insert original)
+      (pearl-paren-style--to-compact)
+      (let ((result (buffer-string)))
+        (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
+                            original result expected))
+          (should (string-match-p "?\\\\;" result))
+          (should (string= result expected)))))))
+
 (ert-deftest test-pearl-paren-style-docstring-with-parens ()
   "Parentheses inside docstrings should be ignored."
   (with-temp-buffer
