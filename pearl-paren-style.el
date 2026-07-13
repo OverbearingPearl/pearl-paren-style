@@ -311,5 +311,153 @@ Single-line parens like (foo) remain unchanged."
     (load (expand-file-name "test-pearl-paren-style" dir) nil t))
   (ert t))
 
+(defun pearl-paren-style--check-balanced-p (&optional beg end)
+  "Check if parentheses are balanced in region from BEG to END.
+If BEG and END are nil, check the entire buffer.
+Return t if balanced, nil if unbalanced."
+  (condition-case err
+      (save-excursion
+        (save-restriction
+          (when (and beg end)
+            (narrow-to-region beg end))
+          ;; check-parens checks parentheses balance in the current buffer
+          ;; If parentheses are unbalanced, it throws an error
+          ;; We can catch this error and return nil
+          (save-excursion
+            (goto-char (point-min))
+            (check-parens))
+          t))  ; Return t if check-parens doesn't throw an error
+    (error nil)))  ; Return nil if check-parens throws an error
+
+;;;###autoload
+(defun pearl-paren-style-compact-region (beg end)
+  "Convert region from BEG to END to compact style."
+  (interactive "r")
+  (unless (pearl-paren-style--check-balanced-p beg end)
+    (user-error "Unbalanced parentheses in selected region"))
+  (save-restriction
+    (narrow-to-region beg end)
+    (pearl-paren-style--to-compact)))
+
+;;;###autoload
+(defun pearl-paren-style-dangling-region (beg end)
+  "Convert region from BEG to END to dangling style."
+  (interactive "r")
+  (unless (pearl-paren-style--check-balanced-p beg end)
+    (user-error "Unbalanced parentheses in selected region"))
+  (save-restriction
+    (narrow-to-region beg end)
+    (pearl-paren-style--to-dangling)))
+
+;;;###autoload
+(defun pearl-paren-style-toggle-region (beg end)
+  "Toggle paren style in region from BEG to END."
+  (interactive "r")
+  (unless (pearl-paren-style--check-balanced-p beg end)
+    (user-error "Unbalanced parentheses in selected region"))
+  (save-restriction
+    (narrow-to-region beg end)
+    (pcase (pearl-paren-style--detect)
+      ('compact (pearl-paren-style--to-dangling))
+      ('dangling (pearl-paren-style--to-compact))
+      (_ (message "Unknown style in region, no toggle performed")))))
+
+;;;###autoload
+(defun pearl-paren-style-convert-region (style beg end)
+  "Convert region from BEG to END to STYLE ('compact or 'dangling)."
+  (interactive
+   (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
+         (region-beginning)
+         (region-end)))
+  (unless (use-region-p)
+    (user-error "No region selected"))
+  (unless (pearl-paren-style--check-balanced-p beg end)
+    (user-error "Unbalanced parentheses in selected region"))
+  (save-restriction
+    (narrow-to-region beg end)
+    (pcase style
+      ('compact (pearl-paren-style--to-compact))
+      ('dangling (pearl-paren-style--to-dangling))
+      (_ (user-error "Unknown style: %s" style)))))
+
+(defun pearl-paren-style--process-file (file style)
+  "Process FILE converting to STYLE.
+Return t if successful, nil if failed due to unbalanced parentheses."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (emacs-lisp-mode)
+    (unless (pearl-paren-style--check-balanced-p)
+      (error "Unbalanced parentheses in file: %s" file))
+    (pcase style
+      ('compact (pearl-paren-style--to-compact))
+      ('dangling (pearl-paren-style--to-dangling)))
+    (write-region (point-min) (point-max) file nil 'silent)
+    t))
+
+(defun pearl-paren-style--collect-el-files (files)
+  "Collect all .el files from FILES list.
+If a directory is included, recursively collect all .el files in it."
+  (cl-loop for file in files
+           append (if (file-directory-p file)
+                      (directory-files-recursively file "\\.el$")
+                    (when (string-match "\\.el$" file)
+                      (list file)))))
+
+;;;###autoload
+(defun pearl-paren-style-compact-files (files)
+  "Convert FILES to compact style.
+FILES is a list of file paths."
+  (interactive
+   (list (dired-get-marked-files)))
+  (pearl-paren-style-convert-files 'compact files))
+
+;;;###autoload
+(defun pearl-paren-style-dangling-files (files)
+  "Convert FILES to dangling style.
+FILES is a list of file paths."
+  (interactive
+   (list (dired-get-marked-files)))
+  (pearl-paren-style-convert-files 'dangling files))
+
+;;;###autoload
+(defun pearl-paren-style-convert-files (style files)
+  "Convert FILES to STYLE ('compact or 'dangling).
+FILES is a list of file paths."
+  (interactive
+   (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
+         (dired-get-marked-files)))
+  (let ((el-files (pearl-paren-style--collect-el-files files)))
+    (when (null el-files)
+      (user-error "No .el files selected"))
+    (let ((count (length el-files)))
+      (unless (y-or-n-p (format "Convert %d file(s) to %s style? " count style))
+        (user-error "Operation cancelled"))
+      (cl-loop for file in el-files
+               for success = (condition-case err
+                                 (pearl-paren-style--process-file file style)
+                               (error
+                                (message "Failed to process %s: %s" file (error-message-string err))
+                                nil))
+               count success into processed
+               finally (message "Processed %d/%d file(s)" processed count)))))
+
+;;;###autoload
+(defun pearl-paren-style-dwim ()
+  "Do What I Mean: convert based on context."
+  (interactive)
+  (cond
+   ;; Case 1: region is active
+   ((use-region-p)
+    (call-interactively 'pearl-paren-style-convert-region))
+
+   ;; Case 2: files/directories are selected in Dired
+   ((and (derived-mode-p 'dired-mode)
+         (dired-get-marked-files))
+    (call-interactively 'pearl-paren-style-convert-files))
+
+   ;; Case 3: default (entire buffer)
+   (t
+    (pearl-paren-style-toggle))))
+
 (provide 'pearl-paren-style)
 ;;; pearl-paren-style.el ends here

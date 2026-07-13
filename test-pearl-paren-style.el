@@ -807,5 +807,197 @@ a closing parenthesis, the conversion should properly merge the parentheses with
           (beginning-of-line)
           (should (looking-at ")$")))))))
 
+(ert-deftest test-pearl-paren-style-check-balanced-p ()
+  "Test bracket balance checking."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    ;; Balanced code
+    (insert "(defun test ()\n  (list 1 2 3))")
+    (should (pearl-paren-style--check-balanced-p))
+
+    ;; Unbalanced code
+    (erase-buffer)
+    (insert "(defun test ()\n  (list 1 2 3)") ; missing closing paren
+    (should-not (pearl-paren-style--check-balanced-p))
+
+    ;; Balanced region
+    (erase-buffer)
+    (insert "(foo (bar))\n(unbalanced (code")
+    (should (pearl-paren-style--check-balanced-p 1 13)) ; first line only
+    (should-not (pearl-paren-style--check-balanced-p 14 (point-max))) ; second line
+    ))
+
+(ert-deftest test-pearl-paren-style-check-balanced-p-region ()
+  "Test bracket balance checking with region arguments."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    ;; Test with explicit beg/end arguments
+    (insert "(foo (bar))\n(unbalanced (code")
+    (should (pearl-paren-style--check-balanced-p 1 13)) ; first line only
+    (should-not (pearl-paren-style--check-balanced-p 14 (point-max))) ; second line
+
+    ;; Test with nil arguments (should check whole buffer)
+    (erase-buffer)
+    (insert "(balanced (code))")
+    (should (pearl-paren-style--check-balanced-p)) ; no arguments
+
+    ;; Test with region that has unbalanced parens
+    (erase-buffer)
+    (insert "(foo (bar)\n(unbalanced")
+    (should-not (pearl-paren-style--check-balanced-p 1 (point-max)))
+
+    ;; Test edge case: empty region
+    (erase-buffer)
+    (insert "(foo (bar))")
+    (should (pearl-paren-style--check-balanced-p 1 1)) ; empty region should be balanced
+    ))
+
+(ert-deftest test-pearl-paren-style-compact-region ()
+  "Convert selected region to compact style."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(defun test ()\n  (let ((x 1))\n    (foo)\n  )\n)")
+    (goto-char (point-min))
+    (forward-line 1) ; move to second line
+    (set-mark (point))
+    (forward-line 3) ; select lines 2-4 (complete let expression)
+    (activate-mark)
+    (call-interactively 'pearl-paren-style-compact-region)
+    (let ((result (buffer-string)))
+      (should (string-match-p "(defun test ()" result))
+      (should (string-match-p "  (let ((x 1))\n    (foo))" result))
+      (should (string-match-p ")" result)))))
+
+(ert-deftest test-pearl-paren-style-dangling-region ()
+  "Convert selected region to dangling style."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    ;; Use balanced code: independent let expression
+    (insert "(let ((x 1))\n  (foo)\n  (bar))\n")
+    (goto-char (point-min))
+    (set-mark (point))
+    (forward-line 3) ; select all lines
+    (activate-mark)
+    (call-interactively 'pearl-paren-style-dangling-region)
+    (let ((result (buffer-string)))
+      (should (string-match-p "(let ((x 1))\n  (foo)\n  (bar)\n)" result)))))
+
+(ert-deftest test-pearl-paren-style-toggle-region ()
+  "Toggle style in selected region."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(defun test ()\n  (let ((x 1))\n    (foo)\n  )\n)")
+    (goto-char (point-min))
+    (forward-line 1) ; move to second line
+    (set-mark (point))
+    (forward-line 3) ; select lines 2-4 (complete let expression)
+    (activate-mark)
+    (let ((original (buffer-string)))
+      (call-interactively 'pearl-paren-style-toggle-region)
+      (let ((result (buffer-string)))
+        (should-not (string= result original))
+        ;; Should have converted dangling to compact
+        (should (string-match-p "  (let ((x 1))\n    (foo))" result))))))
+
+(ert-deftest test-pearl-paren-style-convert-region ()
+  "Convert region with style selection."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(defun test ()\n  (let ((x 1))\n    (foo)\n  )\n)")
+    (goto-char (point-min))
+    (forward-line 1) ; move to second line
+    (set-mark (point))
+    (forward-line 3) ; select lines 2-4 (complete let expression)
+    (activate-mark)
+    ;; Test will mock the interactive prompt
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (_prompt _collection &optional _predicate _require-match _initial-input _hist _def _inherit-input-method)
+                 "compact")))
+      ;; Call function directly, not call-interactively
+      (pearl-paren-style-convert-region 'compact (region-beginning) (region-end))
+      (let ((result (buffer-string)))
+        (should (string-match-p "  (let ((x 1))\n    (foo))" result))))))
+
+(ert-deftest test-pearl-paren-style-dwim-region ()
+  "DWIM should call convert-region when region is active."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(defun test ()\n  (let ((x 1))\n    (foo)\n  )\n)")
+    (goto-char (point-min))
+    (forward-line 1) ; move to second line
+    (set-mark (point))
+    (forward-line 3) ; select lines 2-4 (complete let expression)
+    (activate-mark)
+    ;; Mock the interactive prompt
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (_prompt _collection &optional _predicate _require-match _initial-input _hist _def _inherit-input-method)
+                 "compact")))
+      ;; DWIM will call call-interactively, so we need to simulate interactive call
+      (cl-letf (((symbol-function 'call-interactively)
+                 (lambda (command)
+                   (when (eq command 'pearl-paren-style-convert-region)
+                     (pearl-paren-style-convert-region 'compact (region-beginning) (region-end))))))
+        (pearl-paren-style-dwim)
+        (let ((result (buffer-string)))
+          (should (string-match-p "  (let ((x 1))\n    (foo))" result)))))))
+
+(ert-deftest test-pearl-paren-style-dwim-buffer ()
+  "DWIM should call toggle when no region is active."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(defun test ()\n  (let ((x 1))\n    (foo)))\n")
+    (let ((original (buffer-string)))
+      (call-interactively 'pearl-paren-style-dwim)
+      (let ((result (buffer-string)))
+        (should-not (string= result original))
+        ;; Should have toggled to dangling
+        (should (string-match-p "  (let ((x 1))\n    (foo)\n  )" result))))))
+
+(ert-deftest test-pearl-paren-style-file-processing ()
+  "Test file processing functions with temporary files."
+  (let* ((temp-dir (make-temp-file "pearl-test-" t))
+         (file1 (expand-file-name "test1.el" temp-dir))
+         (file2 (expand-file-name "test2.el" temp-dir))
+         (subdir (expand-file-name "subexec" temp-dir))
+         (file3 (expand-file-name "test3.el" subdir)))
+
+    ;; Create directory structure
+    (make-directory subdir t)
+
+    ;; Create test files
+    (with-temp-file file1
+      (insert "(defun test1 ()\n  (list 1 2 3))"))
+
+    (with-temp-file file2
+      (insert "(defun test2 ()\n  (let ((x 1))\n    (foo)\n  )\n)"))
+
+    (with-temp-file file3
+      (insert "(defun test3 ()\n  (progn\n    (a)\n    (b)\n  )\n)"))
+
+    ;; Test processing single file
+    (should (pearl-paren-style--process-file file1 'dangling))
+    (with-temp-buffer
+      (insert-file-contents file1)
+      (should (string-match-p "  (list 1 2 3)\n)" (buffer-string))))
+
+    ;; Test processing multiple files
+    (let ((files (list file1 file2)))
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) t)))
+        (pearl-paren-style-convert-files 'compact files))
+      (with-temp-buffer
+        (insert-file-contents file2)
+        (should (string-match-p "  (let ((x 1))\n    (foo))" (buffer-string)))))
+
+    ;; Test directory recursion
+    (let ((files (list temp-dir)))
+      (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) t)))
+        (pearl-paren-style-convert-files 'dangling files))
+      (with-temp-buffer
+        (insert-file-contents file3)
+        (should (string-match-p "    (a)\n    (b)\n  )" (buffer-string)))))
+
+    ;; Cleanup
+    (delete-directory temp-dir t)))
+
 (provide 'test-pearl-paren-style)
 ;;; test-pearl-paren-style.el ends here
