@@ -57,13 +57,37 @@
       (skip-chars-forward " \t"))
     (not (eolp))))
 
+(defun pearl-paren-style--calculate-compact-indent (pos)
+  "Calculate proper indentation for line at POS in compact style.
+Uses `calculate-lisp-indent' to determine the correct indentation
+column for the current line, based on Lisp syntax."
+  (condition-case err
+      (save-excursion
+        (goto-char pos)
+        (beginning-of-line)
+        (let ((indent (calculate-lisp-indent)))
+          (cond
+           ((null indent)  ; nil means use default
+            (current-indentation))
+           ((and (integerp indent) (>= indent 0))
+            indent)
+           (t
+            ;; For negative values or other special cases, use current indentation
+            (current-indentation)))))
+    (error
+     (save-excursion
+       (goto-char pos)
+       (beginning-of-line)
+       (current-indentation)))))
+
 (defun pearl-paren-style--detect ()
   "Return current style: `compact', `dangling', or nil."
   (save-excursion
     (goto-char (point-min))
-    (let ((compact 0) (dangling 0))
+    (let ((compact 0) (dangling 0) (has-parens nil))
       (while (search-forward ")" nil t)
         (unless (pearl-paren-style--in-string-or-comment-p)
+          (setq has-parens t)
           (backward-char)
           (let ((open-pos (condition-case nil
                               (scan-lists (point) -1 1)
@@ -85,7 +109,11 @@
           (forward-char)))
       (cond ((> dangling compact) 'dangling)
             ((> compact dangling) 'compact)
-            ((= dangling compact) pearl-paren-style-default)))))
+            ((> dangling 0) 'dangling)  ; equal but non-zero, prefer dangling
+            ((> compact 0) 'compact)    ; only compact exists
+            (has-parens 'compact)       ; all parens are single-line
+            (t nil))                    ; no parens found
+      )))
 
 (defun pearl-paren-style--to-dangling ()
   "Convert buffer to dangling style.
@@ -94,40 +122,52 @@ Single-line parens like (foo) remain unchanged."
     (goto-char (point-max))
     (while (search-backward ")" nil t)
       (unless (pearl-paren-style--in-string-or-comment-p)
-        (let ((line-start (line-beginning-position)))
-          (unless (looking-back "^\\s-*" line-start)
-            (let ((open-pos (condition-case nil
-                                (scan-lists (point) -1 1)
-                              (scan-error nil))))
-              (when (and open-pos
-                         (/= (line-number-at-pos open-pos) (line-number-at-pos))
-                         (save-excursion
-                           (goto-char open-pos)
-                           (not (pearl-paren-style--in-string-or-comment-p))))
-                ;; Compute indentation: use the column of the opening parenthesis
-                (let ((indent-col (save-excursion
-                                    (goto-char open-pos)
-                                    (current-column))))
-                  (let* ((end-of-line (line-end-position))
-                         comment-text)
-                    (save-excursion
-                      (forward-char)
-                      (let ((after-paren (point)))
-                        (skip-chars-forward " \t" end-of-line)
-                        (when (and (< (point) end-of-line)
-                                   (= (char-after (point)) ?\;))
-                          (setq comment-text (buffer-substring after-paren end-of-line))
-                          (delete-region after-paren end-of-line))))
-                    (let ((closing-paren ")"))
-                      (delete-char 1)
-                      (delete-region (point) (line-end-position))
-                      (insert "\n")
-                      (indent-to indent-col)
-                      (insert closing-paren)
-                      (when comment-text
-                        (insert (if (string-match-p "^[ \t]" comment-text)
-                                    comment-text
-                                  (concat " " comment-text)))))))))))))))
+        (let ((line-start (line-beginning-position))
+              (current-col (current-column)))
+          (let ((open-pos (condition-case nil
+                              (scan-lists (point) -1 1)
+                            (scan-error nil))))
+            (when (and open-pos
+                       (/= (line-number-at-pos open-pos) (line-number-at-pos))
+                       (save-excursion
+                         (goto-char open-pos)
+                         (not (eq (char-before) ?\)))))
+              (let ((indent-col (save-excursion
+                                  (goto-char open-pos)
+                                  (current-column))))
+                ;; Check if already correctly positioned (on its own line, correct indent)
+                (if (and (looking-back "^\\s-*" line-start)
+                         (= current-col indent-col))
+                    ;; Already correct: do nothing
+                    nil
+                  ;; Need to adjust position
+                  (if (looking-back "^\\s-*" line-start)
+                      ;; At line start but wrong indent: fix indent
+                      (progn
+                        (delete-horizontal-space)
+                        (indent-to indent-col))
+                    ;; Not at line start: move to new line
+                    (let* ((end-of-line (line-end-position))
+                           comment-text)
+                      (save-excursion
+                        (forward-char)
+                        (let ((after-paren (point)))
+                          (skip-chars-forward " \t" end-of-line)
+                          (when (and (< (point) end-of-line)
+                                     (= (char-after (point)) ?\;)
+                                     )
+                            (setq comment-text (buffer-substring after-paren end-of-line))
+                            (delete-region after-paren end-of-line))))
+                      (let ((closing-paren ")"))
+                        (delete-char 1)
+                        (delete-region (point) (line-end-position))
+                        (insert "\n")
+                        (indent-to indent-col)
+                        (insert closing-paren)
+                        (when comment-text
+                          (insert (if (string-match-p "^[ \t]" comment-text)
+                                      comment-text
+                                    (concat " " comment-text))))))))))))))))
 
 (defun pearl-paren-style--to-compact ()
   "Convert buffer to compact style."
@@ -154,60 +194,64 @@ Single-line parens like (foo) remain unchanged."
                       (forward-line -1)
                       (pearl-paren-style--line-has-comment-p))
                     ;; Previous line has comment, adjust current line indentation
-                    ;; to match the code indentation on previous line
-                    (let ((prev-code-indent
-                           (save-excursion
-                             (forward-line -1)
-                             (beginning-of-line)
-                             (skip-chars-forward " \t")
-                             ;; If we're at code (not comment), get its column
-                             (when (and (not (eolp))
-                                        (not (= (char-after) ?\;)))
-                               (current-column))))
-                          (current-indent
-                           (save-excursion
-                             (beginning-of-line)
-                             (skip-chars-forward " \t")
-                             (current-column))))
-                      (when (and prev-code-indent
-                                 (/= current-indent prev-code-indent))
+                    ;; using Lisp indentation rules
+                    (let* ((target-indent (pearl-paren-style--calculate-compact-indent (point)))
+                           (current-indent
+                            (save-excursion
+                              (beginning-of-line)
+                              (skip-chars-forward " \t")
+                              (current-column))))
+                      (when (and target-indent
+                                 (/= current-indent target-indent))
                         (save-excursion
                           (beginning-of-line)
                           (delete-horizontal-space)
-                          (indent-to prev-code-indent))
+                          (indent-to target-indent))
                         (setq changed t)))
                   ;; No comment on previous line, proceed with merge
                   (let ((comment-text nil)
                         (comment-leading-spaces "")
                         (after-paren (point))
-                        (line-end (line-end-position)))
-                    (let ((rest-of-line (buffer-substring after-paren line-end)))
+                        (line-end (line-end-position))
+                        (rest-of-line "")
+                        (open-pos (condition-case nil
+                                      (scan-lists (point) -1 1)
+                                    (scan-error nil))))
 
-                      (save-excursion
-                        (goto-char after-paren)
-                        (forward-char)
-                        (let ((space-start (point)))
-                          (skip-chars-forward " \t" line-end)
-                          (when (and (< (point) line-end)
-                                     (= (char-after) ?\;))
-                            (setq comment-leading-spaces (buffer-substring space-start (point)))
-                            (setq comment-text (buffer-substring (point) line-end))
-                            (let ((comment-start (- space-start after-paren)))
-                              (setq rest-of-line (substring rest-of-line 0 comment-start))))))
+                    ;; Extract content from closing paren to end of line
+                    (setq rest-of-line (buffer-substring after-paren line-end))
 
-                      (let ((delete-end (line-beginning-position 2)))
-                        (delete-region line-start delete-end))
-                      (save-excursion
-                        (goto-char line-start)
-                        (forward-line -1)
-                        (end-of-line)
+                    (save-excursion
+                      (goto-char after-paren)
+                      (forward-char)  ; Move after the closing paren
+                      (let ((space-start (point)))
+                        (skip-chars-forward " \t" line-end)
+                        (when (and (< (point) line-end)
+                                   (= (char-after) ?\;)
+                                   )
+                          (setq comment-leading-spaces (buffer-substring space-start (point)))
+                          (setq comment-text (buffer-substring (point) line-end))
+                          ;; If there is a comment, rest-of-line should only contain the closing paren
+                          (setq rest-of-line ")"))))
+
+                    ;; Delete current line (including the closing paren)
+                    (let ((delete-end (line-beginning-position 2)))
+                      (delete-region line-start delete-end))
+
+                    ;; Insert closing paren (and comment) into previous line
+                    (save-excursion
+                      (goto-char line-start)
+                      (forward-line -1)
+                      (end-of-line)
+                      ;; If previous line already has content, ensure proper indentation
+                      (let ((current-col (current-column)))
                         (insert rest-of-line)
                         (when comment-text
                           (insert (if (string-empty-p comment-leading-spaces)
                                       " "
                                     comment-leading-spaces)
-                                  comment-text)))
-                      (setq changed t))))))))
+                                  comment-text))))
+                    (setq changed t)))))))
         (when changed
           (goto-char (point-max)))))
     ;; Delete trailing blank lines at end of buffer, but ensure file ends with newline
