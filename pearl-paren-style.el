@@ -55,25 +55,33 @@
         ))))
 
 (defun pearl-paren-style--should-dangle-p (open-pos closing-pos)
-  "Return t if the paren at CLOSING-POS should be dangled relative to OPEN-POS."
+  "Return t if the paren at CLOSING-POS should be dangled relative to OPEN-POS.
+OPEN-POS is the position of the opening parenthesis.
+CLOSING-POS is the position of the closing parenthesis."
   (and (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos))
        (save-excursion
          (goto-char open-pos)
          (not (eq (char-before) ?\))))))
 
 (defun pearl-paren-style--dangle-target-indent (open-pos)
-  "Calculate target indentation column for OPEN-POS."
+  "Calculate target indentation column for OPEN-POS.
+OPEN-POS is the position of the opening parenthesis."
   (save-excursion
     (goto-char open-pos)
     (current-column)))
 
 (defun pearl-paren-style--dangle-is-correct-p (line-start current-col target-col)
-  "Check if paren is already correctly dangled."
+  "Check if paren is already correctly dangled.
+LINE-START is the position at the beginning of the line.
+CURRENT-COL is the current column of the closing paren.
+TARGET-COL is the target column for dangling."
   (and (looking-back "^\\s-*" line-start)
        (= current-col target-col)))
 
 (defun pearl-paren-style--dangle-fix-indent (line-start target-col)
-  "Fix indentation for a paren already on its own line."
+  "Fix indentation for a paren already on its own line.
+LINE-START is the position at the beginning of the line.
+TARGET-COL is the target column for indentation."
   (save-excursion
     (beginning-of-line)
     (delete-horizontal-space)
@@ -81,7 +89,10 @@
 
 (defun pearl-paren-style--dangle-move-to-new-line (open-pos closing-pos target-col)
   "Move paren at CLOSING-POS to a new line with TARGET-COL indent.
-Handles trailing comments."
+Handles trailing comments.
+OPEN-POS is the position of the opening parenthesis.
+CLOSING-POS is the position of the closing parenthesis.
+TARGET-COL is the target column for indentation."
   (let* ((end-of-line (line-end-position))
          comment-text)
     ;; Extract comment if exists
@@ -122,7 +133,8 @@ Handles trailing comments."
 (defun pearl-paren-style--calculate-compact-indent (pos)
   "Calculate proper indentation for line at POS in compact style.
 Uses `calculate-lisp-indent' to determine the correct indentation
-column for the current line, based on Lisp syntax."
+column for the current line, based on Lisp syntax.
+POS is the position in the buffer."
   (save-excursion
     (goto-char pos)
     (beginning-of-line)
@@ -130,7 +142,9 @@ column for the current line, based on Lisp syntax."
 
 (defun pearl-paren-style--check-balanced-p (&optional beg end)
   "Check if parentheses are balanced in region from BEG to END.
-Return t if balanced, nil otherwise."
+Return t if balanced, nil otherwise.
+BEG is the beginning position of the region.
+END is the end position of the region."
   (condition-case nil
       (progn
         (if (and beg end)
@@ -143,7 +157,8 @@ Return t if balanced, nil otherwise."
 
 (defun pearl-paren-style--classify-closing-paren (closing-pos)
   "Classify the closing paren at CLOSING-POS.
-Returns 'dangling, 'compact, or nil if it should be ignored (e.g., single-line or backquote)."
+Returns 'dangling, 'compact, or nil if it should be ignored (e.g., single-line or backquote).
+CLOSING-POS is the position of the closing parenthesis."
   (let ((open-pos (condition-case nil
                      (save-excursion
                        (goto-char closing-pos)
@@ -215,7 +230,8 @@ Single-line parens like (foo) remain unchanged."
                   (pearl-paren-style--dangle-move-to-new-line open-pos closing-pos target-col)))))))))))
 
 (defun pearl-paren-style--is-dangling-p (closing-pos)
-  "Return t if the paren at CLOSING-POS is dangling (on its own line)."
+  "Return t if the paren at CLOSING-POS is dangling (on its own line).
+CLOSING-POS is the position of the closing parenthesis."
   (let ((open-pos (condition-case nil
                      (scan-lists closing-pos -1 1)
                    (scan-error nil))))
@@ -226,7 +242,8 @@ Single-line parens like (foo) remain unchanged."
            (not (looking-back ")" (1- (point))))))))
 
 (defun pearl-paren-style--prev-line-has-comment-p (line-start)
-  "Return t if the line before LINE-START has a comment."
+  "Return t if the line before LINE-START has a comment.
+LINE-START is the position at the beginning of the line."
   (save-excursion
     (goto-char line-start)
     (forward-line -1)
@@ -234,7 +251,8 @@ Single-line parens like (foo) remain unchanged."
 
 (defun pearl-paren-style--compact-fix-indent (pos)
   "Fix indentation for the line containing POS.
-Returns t if indentation was changed, nil otherwise."
+Returns t if indentation was changed, nil otherwise.
+POS is the position in the buffer."
   (let* ((target-indent (pearl-paren-style--calculate-compact-indent pos))
          (current-indent
           (save-excursion
@@ -253,7 +271,8 @@ Returns t if indentation was changed, nil otherwise."
 
 (defun pearl-paren-style--compact-merge-to-prev-line (closing-pos)
   "Move the dangling paren at CLOSING-POS to the end of the previous line.
-Handles trailing comments."
+Handles trailing comments.
+CLOSING-POS is the position of the closing parenthesis."
   (let* ((line-start (line-beginning-position))
          (line-end (line-end-position))
          (comment-text nil)
@@ -321,7 +340,9 @@ Handles trailing comments."
 (defun pearl-paren-style--process-file (file style)
   "Process FILE converting to STYLE.
 Returns (success . file) if successful, (error . message) for external errors.
-Signals internal logic errors directly."
+Signals internal logic errors directly.
+FILE is the path to the file to process.
+STYLE is either 'compact or 'dangling."
   (cond
    ((not (file-exists-p file))
     (cons 'error (format "File not found: %s" file)))
@@ -349,7 +370,8 @@ Signals internal logic errors directly."
 (defun pearl-paren-style--collect-el-files (files)
   "Collect all .el files from FILES list.
 If a directory is included, recursively collect all .el files in it.
-Follows symbolic links."
+Follows symbolic links.
+FILES is a list of file paths."
   (cl-loop for file in files
            append (if (file-directory-p file)
                       (directory-files-recursively file "\\.el$" t)  ; Add t to follow symlinks
@@ -375,7 +397,8 @@ Return list of files, preferring Dired marked files when in Dired mode."
 
 (defun pearl-paren-style--with-el-files (files style)
   "Process .el FILES with STYLE, handling collection, confirmation, and reporting.
-STYLE is 'compact or 'dangling."
+STYLE is 'compact or 'dangling.
+FILES is a list of file paths."
   (let ((el-files (pearl-paren-style--collect-el-files files)))
     (when (null el-files)
       (user-error "No .el files selected"))
