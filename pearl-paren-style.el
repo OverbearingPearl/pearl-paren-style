@@ -88,6 +88,22 @@ column for the current line, based on Lisp syntax."
        (beginning-of-line)
        (current-indentation)))))
 
+(defun pearl-paren-style--check-balanced-p (&optional beg end)
+  "Check if parentheses are balanced in region from BEG to END.
+If BEG and END are nil, check the entire buffer.
+Return t if balanced, nil if unbalanced."
+  (condition-case nil
+      (progn
+        (if (and beg end)
+            (save-restriction
+              (narrow-to-region beg end)
+              (check-parens))
+          (check-parens))
+        t  ; If check-parens doesn't signal error, return t
+        )
+    (error nil)  ; If check-parens signals error, return nil
+    ))
+
 (defun pearl-paren-style--detect ()
   "Return current style: `compact', `dangling', or nil."
   (save-excursion
@@ -302,39 +318,6 @@ Single-line parens like (foo) remain unchanged."
     (_ (user-error "Unknown style: %s" style))))
 
 ;;;###autoload
-(defun pearl-paren-style-run-tests ()
-  "Run all tests for pearl-paren-style."
-  (interactive)
-  (require 'ert)
-  (ert-delete-all-tests)
-  (let* ((this-file (symbol-file 'pearl-paren-style-run-tests))
-         (dir (file-name-directory this-file)))
-    ;; Unload old code
-    (when (featurep 'pearl-paren-style)
-      (unload-feature 'pearl-paren-style t))
-    ;; Reload source files (force load .el, ignore .elc)
-    (load (expand-file-name "pearl-paren-style" dir) nil t)
-    ;; Load test files
-    (load (expand-file-name "test-pearl-paren-style" dir) nil t))
-  (ert t))
-
-(defun pearl-paren-style--check-balanced-p (&optional beg end)
-  "Check if parentheses are balanced in region from BEG to END.
-If BEG and END are nil, check the entire buffer.
-Return t if balanced, nil if unbalanced."
-  (condition-case nil
-      (progn
-        (if (and beg end)
-            (save-restriction
-              (narrow-to-region beg end)
-              (check-parens))
-          (check-parens))
-        t  ; If check-parens doesn't signal error, return t
-        )
-    (error nil)  ; If check-parens signals error, return nil
-    ))
-
-;;;###autoload
 (defun pearl-paren-style-compact-region (beg end)
   "Convert region from BEG to END to compact style."
   (interactive "r")
@@ -486,6 +469,23 @@ If called interactively without Dired selection, prompt for files."
                count success into processed
                finally do (message "Processed %d/%d file(s)" processed count)
                finally return (> processed 0)))))
+
+;;;###autoload
+(defun pearl-paren-style-run-tests ()
+  "Run all tests for pearl-paren-style."
+  (interactive)
+  (require 'ert)
+  (ert-delete-all-tests)
+  (let* ((this-file (symbol-file 'pearl-paren-style-run-tests))
+         (dir (file-name-directory this-file)))
+    ;; Unload old code
+    (when (featurep 'pearl-paren-style)
+      (unload-feature 'pearl-paren-style t))
+    ;; Reload source files (force load .el, ignore .elc)
+    (load (expand-file-name "pearl-paren-style" dir) nil t)
+    ;; Load test files
+    (load (expand-file-name "test-pearl-paren-style" dir) nil t))
+  (ert t))
 
 ;;;###autoload
 (defun pearl-paren-style-dwim ()
