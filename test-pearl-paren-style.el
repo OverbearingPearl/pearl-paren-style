@@ -808,14 +808,15 @@
 ;;;; File processing tests
 
 (ert-deftest test-pearl-paren-style-file-readonly-error ()
-  "File processing fails gracefully for read-only files."
+  "File processing returns error status for read-only files."
   (let ((temp-file (make-temp-file "pearl-readonly-" nil ".el")))
     (with-temp-file temp-file
       (insert "(foo\n  (bar))"))
     (set-file-modes temp-file #o444)
     (unwind-protect
-        (should-error (pearl-paren-style--process-file temp-file 'compact)
-                      :type 'file-error)
+        (let ((result (pearl-paren-style--process-file temp-file 'compact)))
+          (should (eq (car result) 'error))
+          (should (string-match-p "IO error" (cdr result))))
       (set-file-modes temp-file #o644)
       (delete-file temp-file))))
 
@@ -842,14 +843,16 @@
           ;; Test 1: Valid file should succeed
           (should (pearl-paren-style--process-file valid-file 'compact))
 
-          ;; Test 2: Unbalanced file should fail
-          (should-error (pearl-paren-style--process-file unbalanced-file 'compact)
-                        :type 'error)
+          ;; Test 2: Unbalanced file should return error status
+          (let ((result (pearl-paren-style--process-file unbalanced-file 'compact)))
+            (should (eq (car result) 'error))
+            (should (string-match-p "Unbalanced" (cdr result))))
 
-          ;; Test 3: Read-only file should fail - set permissions after creation
+          ;; Test 3: Read-only file should return error status
           (set-file-modes readonly-file #o444)
-          (should-error (pearl-paren-style--process-file readonly-file 'compact)
-                        :type 'file-error)
+          (let ((result (pearl-paren-style--process-file readonly-file 'compact)))
+            (should (eq (car result) 'error))
+            (should (string-match-p "IO error" (cdr result))))
 
           ;; Test 4: Non-el file should be filtered out by collect-el-files
           (let ((files (pearl-paren-style--collect-el-files (list non-el-file))))

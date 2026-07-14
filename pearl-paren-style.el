@@ -35,6 +35,7 @@
           (and (>= (point) 2)
                (eq (char-before) ?\\)
                (eq (char-before (1- (point))) ??)))
+        ;; Check for multi-line comment #| ... |#
         (save-excursion
           (let ((pos (point)))
             (when (re-search-backward "#|" nil t)
@@ -69,29 +70,14 @@
   "Calculate proper indentation for line at POS in compact style.
 Uses `calculate-lisp-indent' to determine the correct indentation
 column for the current line, based on Lisp syntax."
-  (condition-case err
-      (save-excursion
-        (goto-char pos)
-        (beginning-of-line)
-        (let ((indent (calculate-lisp-indent)))
-          (cond
-           ((null indent)  ; nil means use default
-            (current-indentation))
-           ((and (integerp indent) (>= indent 0))
-            indent)
-           (t
-            ;; For negative values or other special cases, use current indentation
-            (current-indentation)))))
-    (error
-     (save-excursion
-       (goto-char pos)
-       (beginning-of-line)
-       (current-indentation)))))
+  (save-excursion
+    (goto-char pos)
+    (beginning-of-line)
+    (calculate-lisp-indent)))
 
 (defun pearl-paren-style--check-balanced-p (&optional beg end)
   "Check if parentheses are balanced in region from BEG to END.
-If BEG and END are nil, check the entire buffer.
-Return t if balanced, nil if unbalanced."
+Return t if balanced, nil otherwise."
   (condition-case nil
       (progn
         (if (and beg end)
@@ -99,45 +85,44 @@ Return t if balanced, nil if unbalanced."
               (narrow-to-region beg end)
               (check-parens))
           (check-parens))
-        t  ; If check-parens doesn't signal error, return t
-        )
-    (error nil)  ; If check-parens signals error, return nil
-    ))
+        t)
+    (error nil)))
 
 (defun pearl-paren-style--detect ()
   "Return current style: `compact', `dangling', or nil."
   (save-excursion
     (goto-char (point-min))
-    (let ((compact 0) (dangling 0) (has-parens nil))
+    (let ((dangling 0)
+          (compact 0)
+          (has-parens nil))
       (while (search-forward ")" nil t)
-        (unless (pearl-paren-style--in-string-or-comment-p)
-          (setq has-parens t)
-          (backward-char)
-          (let ((open-pos (condition-case nil
-                              (scan-lists (point) -1 1)
-                            (scan-error nil)))
-                (closing-paren-pos (point)))
-            ;; Only count multi-line parens
-            (when (and open-pos
-                       (/= (line-number-at-pos open-pos) (line-number-at-pos))
-                       (save-excursion
-                         (goto-char open-pos)
-                         (not (eq (char-before) ?\)))))
-              ;; Simplified: check if the closing parenthesis is at line start (only whitespace before it)
-              (if (save-excursion
+        (let ((closing-pos (match-beginning 0)))
+          (unless (pearl-paren-style--in-string-or-comment-p)
+            (let ((open-pos (condition-case nil
+                               (save-excursion
+                                 (goto-char closing-pos)
+                                 (scan-lists (point) -1 1))
+                             (scan-error nil))))
+              (when open-pos
+                (setq has-parens t)
+                (when (and (/= (line-number-at-pos open-pos)
+                               (line-number-at-pos closing-pos))
+                           (save-excursion
+                             (goto-char open-pos)
+                             (not (eq (char-before) ?\)))))
+                  (save-excursion
+                    (goto-char closing-pos)
                     (beginning-of-line)
                     (skip-chars-forward " \t")
-                    (= (point) closing-paren-pos))
-                  (cl-incf dangling)
-                (cl-incf compact))))
-          (forward-char)))
+                    (if (= (point) closing-pos)
+                        (cl-incf dangling)
+                      (cl-incf compact)))))))))
       (cond ((> dangling compact) 'dangling)
             ((> compact dangling) 'compact)
-            ((> dangling 0) 'dangling)  ; equal but non-zero, prefer dangling
-            ((> compact 0) 'compact)    ; only compact exists
-            (has-parens 'compact)       ; all parens are single-line
-            (t nil))                    ; no parens found
-      )))
+            ((> dangling 0) 'dangling)
+            ((> compact 0) 'compact)
+            (has-parens 'compact)
+            (t nil)))))
 
 (defun pearl-paren-style--to-dangling ()
   "Convert buffer to dangling style.
@@ -149,8 +134,8 @@ Single-line parens like (foo) remain unchanged."
         (let ((line-start (line-beginning-position))
               (current-col (current-column)))
           (let ((open-pos (condition-case nil
-                              (scan-lists (point) -1 1)
-                            (scan-error nil))))
+                             (scan-lists (point) -1 1)
+                           (scan-error nil))))
             (when (and open-pos
                        (/= (line-number-at-pos open-pos) (line-number-at-pos))
                        (save-excursion
@@ -205,12 +190,12 @@ Single-line parens like (foo) remain unchanged."
               (when (and (>= (point) line-start)
                          (looking-back "^\\s-*" line-start)
                          (save-excursion
-                           (condition-case nil
-                               (let ((open-pos (scan-lists (point) -1 1)))
-                                 (when open-pos
-                                   (goto-char open-pos)
-                                   (not (looking-back ")" (1- (point))))))
-                             (scan-error nil))))
+                           (let ((open-pos (condition-case nil
+                                              (scan-lists (point) -1 1)
+                                            (scan-error nil))))
+                             (when open-pos
+                               (goto-char open-pos)
+                               (not (looking-back ")" (1- (point))))))))
                 ;; Check if the direct previous line has a comment.
                 ;; If so, we cannot merge ) to that line to avoid ) being commented out.
                 (if (save-excursion
@@ -238,8 +223,8 @@ Single-line parens like (foo) remain unchanged."
                         (line-end (line-end-position))
                         (rest-of-line "")
                         (open-pos (condition-case nil
-                                      (scan-lists (point) -1 1)
-                                    (scan-error nil))))
+                                     (scan-lists (point) -1 1)
+                                   (scan-error nil))))
 
                     ;; Extract content from closing paren to end of line
                     (setq rest-of-line (buffer-substring after-paren line-end))
@@ -370,17 +355,31 @@ Single-line parens like (foo) remain unchanged."
 
 (defun pearl-paren-style--process-file (file style)
   "Process FILE converting to STYLE.
-Return t if successful, nil if failed due to unbalanced parentheses."
-  (with-temp-buffer
-    (insert-file-contents file)
-    (emacs-lisp-mode)
-    (unless (pearl-paren-style--check-balanced-p)
-      (error "Unbalanced parentheses in file: %s" file))
-    (pcase style
-      ('compact (pearl-paren-style--to-compact))
-      ('dangling (pearl-paren-style--to-dangling)))
-    (write-region (point-min) (point-max) file nil 'silent)
-    t))
+Returns (success . file) if successful, (error . message) for external errors.
+Signals internal logic errors directly."
+  (cond
+   ((not (file-exists-p file))
+    (cons 'error (format "File not found: %s" file)))
+   ((not (file-readable-p file))
+    (cons 'error (format "File not readable: %s" file)))
+   (t
+    (condition-case err
+        (with-temp-buffer
+          (insert-file-contents file)
+          (emacs-lisp-mode)
+          ;; Balanced check is business validation, return error status if failed
+          (if (pearl-paren-style--check-balanced-p)
+              (progn
+                ;; Core conversion logic: internal, fail fast on errors
+                (pcase style
+                  ('compact (pearl-paren-style--to-compact))
+                  ('dangling (pearl-paren-style--to-dangling)))
+                ;; File write is external IO, may signal file-error
+                (write-region (point-min) (point-max) file nil 'silent)
+                (cons 'success file))
+            (cons 'error (format "Unbalanced parentheses in file: %s" file))))
+      ;; Only catch file IO errors; let internal logic errors bubble up
+      (file-error (cons 'error (format "IO error on %s: %s" file (error-message-string err))))))))
 
 (defun pearl-paren-style--collect-el-files (files)
   "Collect all .el files from FILES list.
@@ -392,47 +391,56 @@ Follows symbolic links."
                     (when (string-match "\\.el$" file)
                       (list file)))))
 
+(defun pearl-paren-style--read-files ()
+  "Read file selection interactively.
+Return list of files, preferring Dired marked files when in Dired mode."
+  (if (and (derived-mode-p 'dired-mode)
+           (dired-get-marked-files))
+      (dired-get-marked-files)
+    (let ((selected (read-file-name "Select files (wildcards allowed): "
+                                    nil nil t nil
+                                    (lambda (name)
+                                      (or (file-directory-p name)
+                                          (string-match "\\.el$" name))))))
+      (if (stringp selected)
+          (if (file-directory-p selected)
+              (list selected)
+            (list selected))
+        selected))))
+
+(defun pearl-paren-style--with-el-files (files style)
+  "Process .el FILES with STYLE, handling collection, confirmation, and reporting.
+STYLE is 'compact or 'dangling."
+  (let ((el-files (pearl-paren-style--collect-el-files files)))
+    (when (null el-files)
+      (user-error "No .el files selected"))
+    (let ((count (length el-files)))
+      (unless (y-or-n-p (format "Convert %d file(s) to %s style? " count style))
+        (user-error "Operation cancelled"))
+      (cl-loop for file in el-files
+               for result = (pearl-paren-style--process-file file style)
+               when (eq (car result) 'success)
+               count 1 into processed
+               when (eq (car result) 'error)
+               do (message "Failed to process %s: %s" file (cdr result))
+               finally do (message "Processed %d/%d file(s)" processed count)
+               finally return (> processed 0)))))
+
 ;;;###autoload
 (defun pearl-paren-style-compact-files (files)
   "Convert FILES to compact style.
 FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
-  (interactive
-   (list (if (and (derived-mode-p 'dired-mode)
-                  (dired-get-marked-files))
-             (dired-get-marked-files)
-           (let ((selected (read-file-name "Select files (wildcards allowed): "
-                                           nil nil t nil
-                                           (lambda (name)
-                                             (or (file-directory-p name)
-                                                 (string-match "\\.el$" name))))))
-             (if (stringp selected)
-                 (if (file-directory-p selected)
-                     (list selected)
-                   (list selected))
-               selected)))))
-  (pearl-paren-style-convert-files 'compact files))
+  (interactive (list (pearl-paren-style--read-files)))
+  (pearl-paren-style--with-el-files files 'compact))
 
 ;;;###autoload
 (defun pearl-paren-style-dangling-files (files)
   "Convert FILES to dangling style.
 FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
-  (interactive
-   (list (if (and (derived-mode-p 'dired-mode)
-                  (dired-get-marked-files))
-             (dired-get-marked-files)
-           (let ((selected (read-file-name "Select files (wildcards allowed): "
-                                           nil nil t nil
-                                           (lambda (name)
-                                             (or (file-directory-p name)
-                                                 (string-match "\\.el$" name))))))
-             (if (stringp selected)
-                 (if (file-directory-p selected)
-                     (list selected)
-                   (list selected))
-               selected)))))
-  (pearl-paren-style-convert-files 'dangling files))
+  (interactive (list (pearl-paren-style--read-files)))
+  (pearl-paren-style--with-el-files files 'dangling))
 
 ;;;###autoload
 (defun pearl-paren-style-convert-files (style files)
@@ -441,34 +449,8 @@ FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
   (interactive
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
-         (if (and (derived-mode-p 'dired-mode)
-                  (dired-get-marked-files))
-             (dired-get-marked-files)
-           (let ((selected (read-file-name "Select files (wildcards allowed): "
-                                           nil nil t nil
-                                           (lambda (name)
-                                             (or (file-directory-p name)
-                                                 (string-match "\\.el$" name))))))
-             (if (stringp selected)
-                 (if (file-directory-p selected)
-                     (list selected)
-                   (list selected))
-               selected)))))
-  (let ((el-files (pearl-paren-style--collect-el-files files)))
-    (when (null el-files)
-      (user-error "No .el files selected"))
-    (let ((count (length el-files)))
-      (unless (y-or-n-p (format "Convert %d file(s) to %s style? " count style))
-        (user-error "Operation cancelled"))
-      (cl-loop for file in el-files
-               for success = (condition-case err
-                                 (pearl-paren-style--process-file file style)
-                               (error
-                                (message "Failed to process %s: %s" file (error-message-string err))
-                                nil))
-               count success into processed
-               finally do (message "Processed %d/%d file(s)" processed count)
-               finally return (> processed 0)))))
+         (pearl-paren-style--read-files)))
+  (pearl-paren-style--with-el-files files style))
 
 ;;;###autoload
 (defun pearl-paren-style-run-tests ()
