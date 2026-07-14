@@ -870,11 +870,11 @@ a closing parenthesis, the conversion should properly merge the parentheses with
           (beginning-of-line)
           (should (looking-at ")$")))))))
 
-(ert-deftest test-pearl-paren-style-check-balanced-p ()
-  "Test bracket balance checking."
+(ert-deftest test-pearl-paren-style-check-balanced-comprehensive ()
+  "Comprehensive test for bracket balance checking."
+  ;; Balanced code
   (with-temp-buffer
     (emacs-lisp-mode)
-    ;; Balanced code
     (insert "(defun test ()\n  (list 1 2 3))")
     (should (pearl-paren-style--check-balanced-p))
 
@@ -888,89 +888,94 @@ a closing parenthesis, the conversion should properly merge the parentheses with
     (insert "(foo (bar))\n(unbalanced (code")
     (should (pearl-paren-style--check-balanced-p 1 13)) ; first line only
     (should-not (pearl-paren-style--check-balanced-p 14 (point-max))) ; second line
-    ))
+    )
 
-(ert-deftest test-pearl-paren-style-check-balanced-p-edge-cases ()
-  "Test bracket balance checking with edge cases."
+  ;; Character literals
   (with-temp-buffer
     (emacs-lisp-mode)
-    ;; Test with character literals
     (insert "(list ?\\) ?\\( ?\\;)")
-    (should (pearl-paren-style--check-balanced-p))
+    (should (pearl-paren-style--check-balanced-p)))
 
-    ;; Test with strings containing parentheses
-    (erase-buffer)
-    (insert "(message \"String with (parens)\")")
-    (should (pearl-paren-style--check-balanced-p))
-
-    ;; Test with comments containing parentheses
-    (erase-buffer)
-    (insert "(foo) ; comment with (parens)")
-    (should (pearl-paren-style--check-balanced-p))
-
-    ;; Test with multi-line comments
-    (erase-buffer)
-    (insert "#| (ignored\n  parens) |#\n(foo)")
-    (should (pearl-paren-style--check-balanced-p))
-
-    ;; Test actual file content that previously failed
-    (let ((source-file (expand-file-name "pearl-paren-style.el"
-                                         (file-name-directory
-                                          (or (symbol-file 'pearl-paren-style-run-tests)
-                                              (symbol-file 'pearl-paren-style--check-balanced-p))))))
-      (when (file-exists-p source-file)
-        (erase-buffer)
-        (insert-file-contents source-file)
-        (should (pearl-paren-style--check-balanced-p))))))
-
-(ert-deftest test-pearl-paren-style-check-balanced-p-region ()
-  "Test bracket balance checking with region arguments."
+  ;; Strings containing parentheses
   (with-temp-buffer
     (emacs-lisp-mode)
-    ;; Test with explicit beg/end arguments
-    (insert "(foo (bar))\n(unbalanced (code")
-    (should (pearl-paren-style--check-balanced-p 1 13)) ; first line only
-    (should-not (pearl-paren-style--check-balanced-p 14 (point-max))) ; second line
+    (insert "(message \"String with (parens)\")")
+    (should (pearl-paren-style--check-balanced-p)))
 
-    ;; Test with nil arguments (should check whole buffer)
-    (erase-buffer)
+  ;; Comments containing parentheses
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(foo) ; comment with (parens)")
+    (should (pearl-paren-style--check-balanced-p)))
+
+  ;; Multi-line comments
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "#| (ignored\n  parens) |#\n(foo)")
+    (should (pearl-paren-style--check-balanced-p)))
+
+  ;; Actual file content
+  (let ((source-file (expand-file-name "pearl-paren-style.el"
+                                       (file-name-directory
+                                        (or (symbol-file 'pearl-paren-style-run-tests)
+                                            (symbol-file 'pearl-paren-style--check-balanced-p))))))
+    (when (file-exists-p source-file)
+      (with-temp-buffer
+        (emacs-lisp-mode)
+        (insert-file-contents source-file)
+        (should (pearl-paren-style--check-balanced-p)))))
+
+  ;; Region with nil arguments (whole buffer)
+  (with-temp-buffer
+    (emacs-lisp-mode)
     (insert "(balanced (code))")
-    (should (pearl-paren-style--check-balanced-p)) ; no arguments
+    (should (pearl-paren-style--check-balanced-p))) ; no arguments
 
-    ;; Test with region that has unbalanced parens
-    (erase-buffer)
+  ;; Region with unbalanced parens
+  (with-temp-buffer
+    (emacs-lisp-mode)
     (insert "(foo (bar)\n(unbalanced")
-    (should-not (pearl-paren-style--check-balanced-p 1 (point-max)))
+    (should-not (pearl-paren-style--check-balanced-p 1 (point-max))))
 
-    ;; Test edge case: empty region
-    (erase-buffer)
+  ;; Empty region edge case
+  (with-temp-buffer
+    (emacs-lisp-mode)
     (insert "(foo (bar))")
-    (should (pearl-paren-style--check-balanced-p 1 1)) ; empty region should be balanced
-    ))
+    (should (pearl-paren-style--check-balanced-p 1 1))) ; empty region should be balanced
+  )
 
-(ert-deftest test-pearl-paren-style-extreme-nesting-performance ()
-  "Test performance and correctness with extreme nesting depth."
+(ert-deftest test-pearl-paren-style-nesting-performance ()
+  "Performance tests for deep nesting."
+  ;; Depth 200 test
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((depth 200)
+          (code ""))
+      (dotimes (i depth)
+        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
+      (setq code (concat code "(innermost)"))
+      (dotimes (i depth)
+        (setq code (concat code "\n  )")))
+      (insert code)
+      (let ((start-time (current-time)))
+        (pearl-paren-style--to-dangling)
+        (should (<= (float-time (time-since start-time)) 1.0)))))
+
+  ;; Depth 100 test
   (with-temp-buffer
     (emacs-lisp-mode)
     (let* ((depth 100)
            (original "")
-           (expected-lines (+ 2 depth)))  ; Opening line + closing line + depth lines
-      ;; Generate deeply nested code
+           (expected-lines (+ 2 depth)))
       (dotimes (i depth)
         (setq original (concat original "(level-" (number-to-string i) "\n  ")))
       (setq original (concat original "(innermost)"))
       (dotimes (i depth)
         (setq original (concat original "\n  )")))
       (insert original)
-      ;; Test conversion to dangling
       (let ((start-time (current-time)))
         (pearl-paren-style--to-dangling)
-        (let ((elapsed (float-time (time-since start-time))))
-          ;; Capture variables inside ert-info
-          (ert-info ((let ((d depth) (e elapsed))
-                       (format "Elapsed time: %.3f seconds" e)))
-            (should (<= elapsed 1.0))  ; Should complete within 1 second
-            ))))))
+        (should (<= (float-time (time-since start-time)) 1.0))))))
 
 (ert-deftest test-pearl-paren-style-detect-exact-boundary ()
   "Test detection when compact and dangling counts are exactly equal."
