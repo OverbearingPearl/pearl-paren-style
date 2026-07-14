@@ -686,6 +686,69 @@ a closing parenthesis, the conversion should properly merge the parentheses with
           (should (string-match-p "?\\\\;" result))
           (should (string= result expected)))))))
 
+(ert-deftest test-pearl-paren-style-char-literal-backslash ()
+  "Character literal ?\\ should not break parsing."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((original "(list ?\\\\)"))
+      (insert original)
+      (pearl-paren-style--to-dangling)
+      (let ((result (buffer-string)))
+        (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
+          (should (string-match-p "?\\\\\\\\" result)))))))
+
+(ert-deftest test-pearl-paren-style-readonly-file ()
+  "Read-only file should fail gracefully."
+  (let ((temp-file (make-temp-file "pearl-readonly-" nil ".el")))
+    (with-temp-file temp-file
+      (insert "(foo\n  (bar))"))
+    (set-file-modes temp-file #o444)
+    (unwind-protect
+        (should-error (pearl-paren-style--process-file temp-file 'compact)
+                      :type 'file-error)
+      (set-file-modes temp-file #o644)
+      (delete-file temp-file))))
+
+(ert-deftest test-pearl-paren-style-string-escapes ()
+  "String escape sequences should be preserved."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((original "(message \"Line1\\nLine2\\tTab\\\"Quote\\\\Backslash\")"))
+      (insert original)
+      (pearl-paren-style--to-compact)
+      (let ((result (buffer-string)))
+        (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
+          (should (string-match-p "\\\\n" result))
+          (should (string-match-p "\\\\t" result))
+          (should (string-match-p "\\\\\"" result))
+          (should (string-match-p "\\\\\\\\" result)))))))
+
+(ert-deftest test-pearl-paren-style-buffer-start-with-paren ()
+  "Buffer starting with closing paren."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((original ")\n(foo)"))
+      (insert original)
+      (pearl-paren-style--detect)
+      (should t))))  ; Just ensure no crash
+
+(ert-deftest test-pearl-paren-style-deep-nesting-performance ()
+  "Deep nesting should complete in reasonable time."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((depth 200)
+          (code ""))
+      (dotimes (i depth)
+        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
+      (setq code (concat code "(innermost)"))
+      (dotimes (i depth)
+        (setq code (concat code "\n  )")))
+      (insert code)
+      (let ((start-time (current-time)))
+        (pearl-paren-style--to-dangling)
+        (let ((elapsed (float-time (time-since start-time))))
+          (should (<= elapsed 1.0)))))))
+
 (ert-deftest test-pearl-paren-style-docstring-with-parens ()
   "Parentheses inside docstrings should be ignored."
   (with-temp-buffer
