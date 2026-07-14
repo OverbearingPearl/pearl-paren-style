@@ -318,6 +318,79 @@ Handles trailing comments."
           (goto-char (point-max)))))
     (pearl-paren-style--cleanup-trailing-blank-lines)))
 
+(defun pearl-paren-style--process-file (file style)
+  "Process FILE converting to STYLE.
+Returns (success . file) if successful, (error . message) for external errors.
+Signals internal logic errors directly."
+  (cond
+   ((not (file-exists-p file))
+    (cons 'error (format "File not found: %s" file)))
+   ((not (file-readable-p file))
+    (cons 'error (format "File not readable: %s" file)))
+   (t
+    (condition-case err
+        (with-temp-buffer
+          (insert-file-contents file)
+          (emacs-lisp-mode)
+          ;; Balanced check is business validation, return error status if failed
+          (if (pearl-paren-style--check-balanced-p)
+              (progn
+                ;; Core conversion logic: internal, fail fast on errors
+                (pcase style
+                  ('compact (pearl-paren-style--to-compact))
+                  ('dangling (pearl-paren-style--to-dangling)))
+                ;; File write is external IO, may signal file-error
+                (write-region (point-min) (point-max) file nil 'silent)
+                (cons 'success file))
+            (cons 'error (format "Unbalanced parentheses in file: %s" file))))
+      ;; Only catch file IO errors; let internal logic errors bubble up
+      (file-error (cons 'error (format "IO error on %s: %s" file (error-message-string err))))))))
+
+(defun pearl-paren-style--collect-el-files (files)
+  "Collect all .el files from FILES list.
+If a directory is included, recursively collect all .el files in it.
+Follows symbolic links."
+  (cl-loop for file in files
+           append (if (file-directory-p file)
+                      (directory-files-recursively file "\\.el$" t)  ; Add t to follow symlinks
+                    (when (string-match "\\.el$" file)
+                      (list file)))))
+
+(defun pearl-paren-style--read-files ()
+  "Read file selection interactively.
+Return list of files, preferring Dired marked files when in Dired mode."
+  (if (and (derived-mode-p 'dired-mode)
+           (dired-get-marked-files))
+      (dired-get-marked-files)
+    (let ((selected (read-file-name "Select files (wildcards allowed): "
+                                    nil nil t nil
+                                    (lambda (name)
+                                      (or (file-directory-p name)
+                                          (string-match "\\.el$" name))))))
+      (if (stringp selected)
+          (if (file-directory-p selected)
+              (list selected)
+            (list selected))
+        selected))))
+
+(defun pearl-paren-style--with-el-files (files style)
+  "Process .el FILES with STYLE, handling collection, confirmation, and reporting.
+STYLE is 'compact or 'dangling."
+  (let ((el-files (pearl-paren-style--collect-el-files files)))
+    (when (null el-files)
+      (user-error "No .el files selected"))
+    (let ((count (length el-files)))
+      (unless (y-or-n-p (format "Convert %d file(s) to %s style? " count style))
+        (user-error "Operation cancelled"))
+      (cl-loop for file in el-files
+               for result = (pearl-paren-style--process-file file style)
+               when (eq (car result) 'success)
+               count 1 into processed
+               when (eq (car result) 'error)
+               do (message "Failed to process %s: %s" file (cdr result))
+               finally do (message "Processed %d/%d file(s)" processed count)
+               finally return (> processed 0)))))
+
 ;;;###autoload
 (defun pearl-paren-style-toggle ()
   "Toggle paren style between compact and dangling."
@@ -401,79 +474,6 @@ Handles trailing comments."
       ('compact (pearl-paren-style--to-compact))
       ('dangling (pearl-paren-style--to-dangling))
       (_ (user-error "Unknown style: %s" style)))))
-
-(defun pearl-paren-style--process-file (file style)
-  "Process FILE converting to STYLE.
-Returns (success . file) if successful, (error . message) for external errors.
-Signals internal logic errors directly."
-  (cond
-   ((not (file-exists-p file))
-    (cons 'error (format "File not found: %s" file)))
-   ((not (file-readable-p file))
-    (cons 'error (format "File not readable: %s" file)))
-   (t
-    (condition-case err
-        (with-temp-buffer
-          (insert-file-contents file)
-          (emacs-lisp-mode)
-          ;; Balanced check is business validation, return error status if failed
-          (if (pearl-paren-style--check-balanced-p)
-              (progn
-                ;; Core conversion logic: internal, fail fast on errors
-                (pcase style
-                  ('compact (pearl-paren-style--to-compact))
-                  ('dangling (pearl-paren-style--to-dangling)))
-                ;; File write is external IO, may signal file-error
-                (write-region (point-min) (point-max) file nil 'silent)
-                (cons 'success file))
-            (cons 'error (format "Unbalanced parentheses in file: %s" file))))
-      ;; Only catch file IO errors; let internal logic errors bubble up
-      (file-error (cons 'error (format "IO error on %s: %s" file (error-message-string err))))))))
-
-(defun pearl-paren-style--collect-el-files (files)
-  "Collect all .el files from FILES list.
-If a directory is included, recursively collect all .el files in it.
-Follows symbolic links."
-  (cl-loop for file in files
-           append (if (file-directory-p file)
-                      (directory-files-recursively file "\\.el$" t)  ; Add t to follow symlinks
-                    (when (string-match "\\.el$" file)
-                      (list file)))))
-
-(defun pearl-paren-style--read-files ()
-  "Read file selection interactively.
-Return list of files, preferring Dired marked files when in Dired mode."
-  (if (and (derived-mode-p 'dired-mode)
-           (dired-get-marked-files))
-      (dired-get-marked-files)
-    (let ((selected (read-file-name "Select files (wildcards allowed): "
-                                    nil nil t nil
-                                    (lambda (name)
-                                      (or (file-directory-p name)
-                                          (string-match "\\.el$" name))))))
-      (if (stringp selected)
-          (if (file-directory-p selected)
-              (list selected)
-            (list selected))
-        selected))))
-
-(defun pearl-paren-style--with-el-files (files style)
-  "Process .el FILES with STYLE, handling collection, confirmation, and reporting.
-STYLE is 'compact or 'dangling."
-  (let ((el-files (pearl-paren-style--collect-el-files files)))
-    (when (null el-files)
-      (user-error "No .el files selected"))
-    (let ((count (length el-files)))
-      (unless (y-or-n-p (format "Convert %d file(s) to %s style? " count style))
-        (user-error "Operation cancelled"))
-      (cl-loop for file in el-files
-               for result = (pearl-paren-style--process-file file style)
-               when (eq (car result) 'success)
-               count 1 into processed
-               when (eq (car result) 'error)
-               do (message "Failed to process %s: %s" file (cdr result))
-               finally do (message "Processed %d/%d file(s)" processed count)
-               finally return (> processed 0)))))
 
 ;;;###autoload
 (defun pearl-paren-style-compact-files (files)
