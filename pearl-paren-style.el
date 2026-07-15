@@ -5,47 +5,40 @@
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
 ;; Version: 0.1.6
 ;; Package-Requires: ((emacs "25.1"))
-;; Keywords: lisp, tools, convenience, ai, parentheses, formatting, code-generation
+;; Keywords: lisp, tools, convenience, parentheses, formatting
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
 
 ;;; Commentary:
 
 ;; Toggle Lisp code between compact (community standard) and dangling
-;; (AI-friendly) parenthesis styles.
+;; (each closing parenthesis on its own line) styles.
 ;;
-;; This package addresses a key problem in AI-assisted Lisp programming:
-;; Large Language Models (LLMs) often struggle with properly balancing
-;; parentheses in compact Lisp code.  The dangling style (each closing
-;; parenthesis on its own line) significantly reduces syntax errors
-;; while maintaining readability.
+;; The dangling style may help AI-assisted editing tools (Aider,
+;; Copilot, etc.) by isolating each closing delimiter on its own line.
+;; This is an experimental hypothesis — see README.md for details.
 ;;
-;; Key features:
+;; Features:
 ;;
-;; - AI-optimized: Convert to dangling style before AI code generation,
-;;   then back to compact style for committing
-;; - SEARCH/REPLACE optimization: Each closing paren becomes an atomic line
-;;   for reliable patch generation in AI-assisted editing tools
-;; - Diff resilience: Structural changes are isolated to specific lines
-;; - Smart conversion: Preserves single-line expressions like (foo)
-;; - Comment-aware: Handles inline and trailing comments correctly
-;; - Batch operations: Process files, directories, or Dired selections
-;; - Region support: Convert only selected text
-;; - Safety checks: Validates parenthesis balance before conversion
-;;
-;; Recommended workflow:
-;; 1. Before AI coding: M-x pearl-paren-style-dangling
-;; 2. Generate/modify code with AI tools
-;; 3. Before committing: M-x pearl-paren-style-compact
+;; - Convert between compact and dangling styles
+;; - Preserves single-line expressions like (foo)
+;; - Handles inline and trailing comments
+;; - Process regions, files, or Dired selections
+;; - Validates parenthesis balance before conversion
 ;;
 ;; Commands:
 ;; - pearl-paren-style-toggle: Auto-detect and toggle style
 ;; - pearl-paren-style-compact: Force compact style
 ;; - pearl-paren-style-dangling: Force dangling style
-;; - pearl-paren-style-dwim: Do What I Mean (context-aware)
-;; - Region variants: Add -region suffix (e.g., compact-region)
-;; - File variants: Add -files suffix (e.g., dangling-files)
+;; - pearl-paren-style-dwim: Context-aware conversion
+;; - Region variants: Add -region suffix
+;; - File variants: Add -files suffix
 ;;
-;; See README.md for detailed examples and configuration options.
+;; Suggested workflow for AI coding:
+;; 1. M-x pearl-paren-style-dangling
+;; 2. Generate/modify code with AI tools
+;; 3. M-x pearl-paren-style-compact before committing
+;;
+;; See README.md for detailed examples and configuration.
 
 ;;; Code:
 
