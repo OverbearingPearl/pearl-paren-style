@@ -23,6 +23,9 @@
 ;;
 ;; - AI-optimized: Convert to dangling style before AI code generation,
 ;;   then back to compact style for committing
+;; - SEARCH/REPLACE optimization: Each closing paren becomes an atomic line
+;;   for reliable patch generation in AI-assisted editing tools
+;; - Diff resilience: Structural changes are isolated to specific lines
 ;; - Smart conversion: Preserves single-line expressions like (foo)
 ;; - Comment-aware: Handles inline and trailing comments correctly
 ;; - Batch operations: Process files, directories, or Dired selections
@@ -309,7 +312,7 @@ CLOSING-POS is the position of the closing parenthesis."
          (comment-text nil)
          (comment-leading-spaces "")
          (rest-of-line (buffer-substring closing-pos line-end)))
-    
+
     ;; Extract comment if exists
     (save-excursion
       (goto-char closing-pos)
@@ -463,7 +466,11 @@ FILES is a list of file paths."
 
 ;;;###autoload
 (defun pearl-paren-style-dangling ()
-  "Convert to dangling style (closing parens on separate lines)."
+  "Convert to dangling style (closing parens on separate lines).
+Particularly recommended for:
+- AI code generation sessions
+- SEARCH/REPLACE operations (Aider/Copilot)
+- Major refactoring operations"
   (interactive)
   (pearl-paren-style--to-dangling)
   (message "Converted to dangling style"))
