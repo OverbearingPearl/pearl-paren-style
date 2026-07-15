@@ -4,7 +4,7 @@
 
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
 ;; Version: 0.1.6
-;; Package-Requires: ((emacs "25.1") (cl-lib "0.5"))
+;; Package-Requires: ((emacs "25.1"))
 ;; Keywords: lisp, tools, convenience, ai, parentheses, formatting, code-generation
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
 
