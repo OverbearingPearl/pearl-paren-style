@@ -1,17 +1,48 @@
-;;; pearl-paren-style.el --- Toggle Lisp paren style  -*- lexical-binding: t; -*-
+;;; pearl-paren-style.el --- Toggle Lisp parenthesis styles between compact and AI-friendly dangling  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 OverbearingPearl
 
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
 ;; Version: 0.1.6
 ;; Package-Requires: ((emacs "25.1"))
-;; Keywords: lisp, tools, convenience
+;; Keywords: lisp, tools, convenience, ai, parentheses, formatting, code-generation
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
 
 ;;; Commentary:
 
-;; Toggle between compact and dangling paren styles.
-;; M-x pearl-paren-style-toggle
+;; Toggle Lisp code between compact (community standard) and dangling
+;; (AI-friendly) parenthesis styles.
+;;
+;; This package addresses a key problem in AI-assisted Lisp programming:
+;; Large Language Models (LLMs) often struggle with properly balancing
+;; parentheses in compact Lisp code.  The dangling style (each closing
+;; parenthesis on its own line) significantly reduces syntax errors
+;; while maintaining readability.
+;;
+;; Key features:
+;;
+;; - AI-optimized: Convert to dangling style before AI code generation,
+;;   then back to compact style for committing
+;; - Smart conversion: Preserves single-line expressions like (foo)
+;; - Comment-aware: Handles inline and trailing comments correctly
+;; - Batch operations: Process files, directories, or Dired selections
+;; - Region support: Convert only selected text
+;; - Safety checks: Validates parenthesis balance before conversion
+;;
+;; Recommended workflow:
+;; 1. Before AI coding: M-x pearl-paren-style-dangling
+;; 2. Generate/modify code with AI tools
+;; 3. Before committing: M-x pearl-paren-style-compact
+;;
+;; Commands:
+;; - pearl-paren-style-toggle: Auto-detect and toggle style
+;; - pearl-paren-style-compact: Force compact style
+;; - pearl-paren-style-dangling: Force dangling style
+;; - pearl-paren-style-dwim: Do What I Mean (context-aware)
+;; - Region variants: Add -region suffix (e.g., compact-region)
+;; - File variants: Add -files suffix (e.g., dangling-files)
+;;
+;; See README.md for detailed examples and configuration options.
 
 ;;; Code:
 
