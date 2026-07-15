@@ -6,7 +6,15 @@ Toggle Lisp paren style between compact and dangling layouts.
 
 This package solves a specific problem in **AI-assisted coding**: Large Language Models (LLMs) frequently struggle with properly balancing parentheses when generating compact Lisp code.
 
-While the dangling paren style (where each closing parenthesis occupies its own line) is not the conventional Lisp community standard, it provides significant advantages for AI code generation:
+**Note**: While this observation is widely reported by practitioners,
+academic research specifically on Lisp parenthesis balancing in AI
+code generation remains limited. This package implements a practical
+solution based on cognitive science principles and user experience.
+
+For a detailed technical explanation of why dangling parentheses may improve AI code generation,
+see the [AI Assistance Technical Deep Dive](AI-ASSISTANCE.org).
+
+While the dangling paren style (where each closing parenthesis occupies its own line) is not the conventional Lisp community standard, it provides practical advantages for AI code generation:
 
 - **Reduced syntax errors**: AI models are less likely to miss or misplace closing parentheses when each delimiter is isolated on its own line
 - **Clearer structure**: Vertical alignment makes nesting levels and block boundaries visually explicit
