@@ -4,7 +4,7 @@ Toggle Lisp paren style between compact and dangling layouts.
 
 ## Motivation
 
-This package solves a specific problem in **AI-assisted coding**: Large Language Models (LLMs) frequently struggle with properly balancing parentheses when generating compact Lisp code. 
+This package solves a specific problem in **AI-assisted coding**: Large Language Models (LLMs) frequently struggle with properly balancing parentheses when generating compact Lisp code.
 
 While the dangling paren style (where each closing parenthesis occupies its own line) is not the conventional Lisp community standard, it provides significant advantages for AI code generation:
 
@@ -42,36 +42,44 @@ Clone and add to load path:
 
 ### Commands
 
-- `M-x pearl-paren-style-toggle`  
+- `M-x pearl-paren-style-toggle`
   Toggle current buffer between compact and dangling styles based on automatic detection
 
-- `M-x pearl-paren-style-compact`  
+- `M-x pearl-paren-style-compact`
   Force conversion to compact style (closing parens on same line as content)
 
-- `M-x pearl-paren-style-dangling`  
+- `M-x pearl-paren-style-dangling`
   Force conversion to dangling style (closing parens on separate lines, aligned with opening parens)
 
-- `M-x pearl-paren-style-convert`  
+- `M-x pearl-paren-style-convert`
   Interactive prompt to choose specific style (compact or dangling)
 
-### Smart Behavior
+### Region and File Operations
 
-**Single-line preservation**: The dangling conversion intentionally preserves single-line expressions like `(foo)` or `(+ 1 2)`. Only multi-line structures are expanded:
+Add `-region` suffix for region operations (e.g., `pearl-paren-style-compact-region`).
+
+Add `-files` suffix for file operations (e.g., `pearl-paren-style-dangling-files`).
+
+### Smart Do-What-I-Mean
+
+- `M-x pearl-paren-style-dwim`
+  Context-aware conversion:
+  - Active region → convert region
+  - Dired with marked files → convert files
+  - Otherwise → toggle entire buffer
+
+## Examples
+
+### Basic Conversion
 
 ```elisp
-;; Before (compact)
-(foo (bar))
-
-;; After (dangling) - unchanged because single-line
-(foo (bar))
-
-;; Before (compact multi-line)
+;; Before (compact style)
 (defun example ()
   (let ((x 1))
     (when x
       (print x))))
 
-;; After (dangling multi-line)
+;; After (dangling style)
 (defun example ()
   (let ((x 1))
     (when x
@@ -81,7 +89,33 @@ Clone and add to load path:
 )
 ```
 
-**Alignment**: In dangling style, closing parentheses align vertically with their corresponding opening parentheses, creating a clear visual structure.
+### Single-line Preservation
+
+Single-line expressions remain unchanged in dangling style:
+
+```elisp
+;; Before and after (unchanged)
+(mapcar #'process-item item-list)
+(+ 1 2 3)
+```
+
+### Comment Handling
+
+Comments are preserved during conversion:
+
+```elisp
+;; Before
+(defun example ()
+  (let ((x 1))        ; initialize
+    (print x)))       ; output
+
+;; After
+(defun example ()
+  (let ((x 1))        ; initialize
+    (print x)         ; output
+  )                   ; end let
+)
+```
 
 ## Configuration
 
@@ -101,4 +135,3 @@ M-x pearl-paren-style-run-tests
 ## License
 
 GPL v3 or later
-
