@@ -1,4 +1,4 @@
-;;; pearl-paren-style.el --- Toggle Lisp parenthesis styles between compact and AI-friendly dangling  -*- lexical-binding: t; -*-
+;;; pearl-paren-style.el --- Toggle Lisp paren styles between compact and dangling  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 OverbearingPearl
 
