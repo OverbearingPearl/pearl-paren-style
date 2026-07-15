@@ -33,20 +33,16 @@ jobs:
 
       - name: Find all .el files
         run: |
-          # Find all .el files, excluding test files for package-lint
+          # Find all .el files
           find . -name "*.el" -not -path "./melpa/*" > all-el-files.txt
-          # Separate test files and non-test files
-          grep -v "^\./.*test-" all-el-files.txt > non-test-el-files.txt
-          grep "^\./.*test-" all-el-files.txt > test-el-files.txt
+          # Main package file is hardcoded to pearl-paren-style.el
+          echo "./pearl-paren-style.el" > main-el-files.txt
 
           echo "All .el files:"
           cat all-el-files.txt
           echo ""
-          echo "Non-test files (for package-lint):"
-          cat non-test-el-files.txt
-          echo ""
-          echo "Test files (for syntax checks only):"
-          cat test-el-files.txt
+          echo "Main package file (for package-lint):"
+          cat main-el-files.txt
 
       - name: Install packages and run all checks
         run: |
@@ -58,9 +54,9 @@ jobs:
                 --eval "(package-install 'flycheck)" \
                 --eval "(package-install 'checkdoc)" 2>&1 | grep -v "^Loading"
 
-          # Run package-lint only on non-test files
+          # Run package-lint only on main package file
           echo "========================================="
-          echo "Running package-lint on non-test files..."
+          echo "Running package-lint on main package file..."
           echo "========================================="
           while IFS= read -r file; do
             echo "Checking $file with package-lint..."
@@ -68,9 +64,9 @@ jobs:
                   --eval "(package-initialize)" \
                   -l package-lint \
                   -f package-lint-batch-and-exit "$file" 2>&1 || exit 1
-          done < non-test-el-files.txt
+          done < main-el-files.txt
 
-          # Run flycheck and checkdoc on ALL files (including test files)
+          # Run flycheck and checkdoc on ALL files
           echo "========================================="
           echo "Running flycheck and checkdoc on ALL files..."
           echo "========================================="
