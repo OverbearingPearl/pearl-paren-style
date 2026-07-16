@@ -199,7 +199,9 @@ Returns the overlay or nil if no annotation needed."
               (push ov pearl-paren-style--annotation-overlays))))))))
 
 (defun pearl-paren-style--update-annotations-incremental (beg end)
-  "Update annotations incrementally in region BEG to END."
+  "Update annotations incrementally in region BEG to END.
+BEG is the beginning position of the region.
+END is the end position of the region."
   (when pearl-paren-style--annotation-enabled
     ;; 1. Check if modification affects opening parenthesis positions
     (let ((affected-overlays nil))
@@ -251,7 +253,9 @@ Returns the overlay or nil if no annotation needed."
                   (push ov pearl-paren-style--annotation-overlays)))))))))))
 
 (defun pearl-paren-style--schedule-debounced-update (beg end)
-  "Schedule annotation update with debounce for region BEG to END."
+  "Schedule annotation update with debounce for region BEG to END.
+BEG is the beginning position of the region.
+END is the end position of the region."
   (when pearl-paren-style--annotation-debounce-timer
     (cancel-timer pearl-paren-style--annotation-debounce-timer))
   (setq pearl-paren-style--annotation-debounce-timer
@@ -259,14 +263,19 @@ Returns the overlay or nil if no annotation needed."
                          #'pearl-paren-style--debounced-update beg end)))
 
 (defun pearl-paren-style--debounced-update (beg end)
-  "Debounced annotation update for region BEG to END."
+  "Debounced annotation update for region BEG to END.
+BEG is the beginning position of the region.
+END is the end position of the region."
   (setq pearl-paren-style--annotation-debounce-timer nil)
   (when (and pearl-paren-style--annotation-enabled
              (get-buffer-window (current-buffer)))
     (pearl-paren-style--update-annotations-incremental beg end)))
 
 (defun pearl-paren-style--after-change (beg end _len)
-  "Handle buffer changes to update annotations."
+  "Handle buffer changes to update annotations.
+BEG is the beginning position of the changed region.
+END is the end position of the changed region.
+_LEN is the length of the change (unused)."
   (when pearl-paren-style--annotation-enabled
     ;; Check if change might affect annotations
     (save-excursion
