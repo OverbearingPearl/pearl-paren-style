@@ -125,7 +125,7 @@ CLOSING-POS is the position of the closing parenthesis."
 
 (defun pearl-paren-style--get-annotation (closing-pos)
   "Get annotation for closing parenthesis at CLOSING-POS.
-Returns (STRING . DISTANCE) where DISTANCE is line difference, or nil."
+Returns (STRING . LINE-DISTANCE) where LINE-DISTANCE is line difference, or nil."
   (save-excursion
     (goto-char closing-pos)
     (let ((open-pos (condition-case nil
@@ -148,13 +148,13 @@ Returns (STRING . DISTANCE) where DISTANCE is line difference, or nil."
               (cons (format " ← %d:%d %s" open-line open-col open-text)
                     (- close-line open-line)))))))))
 
-(defun pearl-paren-style--annotation-color-for-distance (distance)
-  "Calculate annotation color based on DISTANCE (lines from opening paren).
+(defun pearl-paren-style--annotation-color-for-distance (line-distance)
+  "Calculate annotation color based on LINE-DISTANCE (lines from opening paren).
 Closer distance = blend more toward background (less visible)."
   (let* ((base-color (face-attribute 'pearl-paren-style-annotation :foreground))
          (bg-color (face-attribute 'default :background))
          (threshold 20.0)
-         (ratio (min 1.0 (/ (float distance) threshold)))
+         (ratio (min 1.0 (/ (float line-distance) threshold)))
          (base-rgb (color-name-to-rgb base-color))
          (bg-rgb (color-name-to-rgb bg-color)))
     (if (and base-rgb bg-rgb)
@@ -172,9 +172,9 @@ Returns the overlay or nil if no annotation needed."
     (let ((result (pearl-paren-style--get-annotation closing-pos)))
       (when result
         (let* ((annotation (car result))
-               (distance (cdr result))
+               (line-distance (cdr result))
                (ov (make-overlay closing-pos (1+ closing-pos)))
-               (color (pearl-paren-style--annotation-color-for-distance distance)))
+               (color (pearl-paren-style--annotation-color-for-distance line-distance)))
           (overlay-put ov 'category 'pearl-paren-style-annotation)
           (overlay-put ov 'after-string
                        (propertize annotation 'face `(:foreground ,color)))
@@ -226,8 +226,8 @@ Returns the overlay or nil if no annotation needed."
             (let ((result (pearl-paren-style--get-annotation closing-pos)))
               (if result
                   (let* ((annotation (car result))
-                         (distance (cdr result))
-                         (color (pearl-paren-style--annotation-color-for-distance distance)))
+                         (line-distance (cdr result))
+                         (color (pearl-paren-style--annotation-color-for-distance line-distance)))
                     (overlay-put ov 'after-string
                                  (propertize annotation 'face `(:foreground ,color))))
                 ;; If no annotation, delete overlay
