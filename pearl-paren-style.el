@@ -151,17 +151,27 @@ Returns (STRING . LINE-DISTANCE) where LINE-DISTANCE is line difference, or nil.
 (defun pearl-paren-style--annotation-color-for-distance (line-distance)
   "Calculate annotation color based on LINE-DISTANCE (lines from opening paren).
 Closer distance = blend more toward background (less visible)."
-  (let* ((base-color (face-attribute 'pearl-paren-style-annotation :foreground))
-         (bg-color (face-attribute 'default :background))
+  (let* ((frame (selected-frame))
+         ;; Use font-lock-comment-face color directly
+         (base-color (face-attribute 'font-lock-comment-face :foreground frame))
+         (bg-color (face-attribute 'default :background frame))
          (threshold 20.0)
          (ratio (min 1.0 (/ (float line-distance) threshold)))
          (base-rgb (color-name-to-rgb base-color))
          (bg-rgb (color-name-to-rgb bg-color)))
+
+    ;; Validate color validity - if invalid, crash directly (following trust boundary)
+    (when (eq base-color 'unspecified)
+      (error "font-lock-comment-face foreground color is unspecified"))
+    (when (eq bg-color 'unspecified)
+      (error "Default face background color is unspecified"))
+
     (if (and base-rgb bg-rgb)
         (apply #'color-rgb-to-hex
                (cl-mapcar (lambda (b g)
                             (+ (* b ratio) (* g (- 1.0 ratio))))
                           base-rgb bg-rgb))
+      ;; If color conversion fails, use base color
       base-color)))
 
 (defun pearl-paren-style--create-annotation-overlay (closing-pos)

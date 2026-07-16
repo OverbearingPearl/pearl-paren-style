@@ -1756,6 +1756,47 @@
                 (should (stringp annotation))
                 (should (> (length annotation) 0))))))))))
 
+;;;; Annotation color tests
+
+(ert-deftest test-pearl-paren-style-annotation-color-with-valid-face ()
+  "Test annotation color calculation with valid face colors."
+  (let ((pearl-paren-style-show-annotations t))
+    ;; Simulate valid face colors
+    (cl-letf (((symbol-function 'face-attribute)
+               (lambda (face attribute &optional frame inherit)
+                 (cond
+                  ((eq face 'font-lock-comment-face)
+                   "#888888")
+                  ((eq face 'default)
+                   "#242424")
+                  (t
+                   (error "Unexpected face in test: %s" face))))))
+      (should (stringp (pearl-paren-style--annotation-color-for-distance 1)))
+      (should (stringp (pearl-paren-style--annotation-color-for-distance 20)))
+      (should (stringp (pearl-paren-style--annotation-color-for-distance 30))))))
+
+(ert-deftest test-pearl-paren-style-annotation-color-with-unspecified-face ()
+  "Test annotation color calculation throws error with unspecified face."
+  (let ((pearl-paren-style-show-annotations t))
+    ;; Simulate font-lock-comment-face returning unspecified
+    (cl-letf (((symbol-function 'face-attribute)
+               (lambda (face attribute &optional frame inherit)
+                 (cond
+                  ((eq face 'font-lock-comment-face)
+                   'unspecified)
+                  ((eq face 'default)
+                   "#242424")
+                  (t
+                   (error "Unexpected face in test: %s" face))))))
+      ;; Use condition-case to capture and verify error
+      (condition-case err
+          (progn
+            (pearl-paren-style--annotation-color-for-distance 1)
+            (ert-fail "Expected error but none was thrown"))
+        (error
+         (should (string-match-p "font-lock-comment-face foreground color is unspecified"
+                                 (error-message-string err))))))))
+
 ;;;; Boundary condition tests
 
 (ert-deftest test-pearl-paren-style-boundary-empty-lines ()
