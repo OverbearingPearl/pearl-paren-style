@@ -21,6 +21,7 @@
 ;;
 ;; - Convert between compact and dangling styles
 ;; - Annotation display for dangling style showing opening parenthesis location
+;;   with distance-based color gradient (closer = fainter, 20 lines = full color)
 ;; - Automatic annotation updates with debounced change detection
 ;; - Preserves single-line expressions like (foo)
 ;; - Handles inline and trailing comments

@@ -158,6 +158,10 @@ Comments are preserved during conversion:
 (setq pearl-paren-style-annotation-delay 0.1)
 ```
 
+Annotations inherit the current theme's comment face color. They fade based on
+distance from the opening parenthesis (closer = fainter), reaching full color
+at 20 lines of separation.
+
 Annotations automatically update after buffer changes with a debounced delay
 to maintain performance during editing.
 
