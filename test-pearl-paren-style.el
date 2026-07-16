@@ -1517,6 +1517,59 @@
             (dolist (text overlay-texts)
               (should (string-match-p "← [0-9]+:[0-9]+ " text)))))))))
 
+(ert-deftest test-pearl-paren-style-annotation-already-dangling ()
+  "Annotation should show when file is already in dangling style."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Start with dangling style code
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      ;; The file is already in dangling style, so calling pearl-paren-style-dangling
+      ;; should still show annotations
+      (pearl-paren-style-dangling)
+
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
+        (ert-info ((format "Annotation overlay count: %d\nBuffer content:\n%s"
+                           overlay-count (buffer-string)))
+          (should pearl-paren-style--annotation-enabled)
+          (should (> overlay-count 0)))))))
+
+(ert-deftest test-pearl-paren-style-annotation-toggle-to-dangling ()
+  "Annotation should show when toggling from compact to dangling."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Start with compact style
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")))\n")
+      ;; Toggle to dangling
+      (pearl-paren-style-toggle)
+
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays))
+            (detected-style (pearl-paren-style--detect)))
+        (ert-info ((format "Detected style: %s\nAnnotation overlay count: %d\nBuffer content:\n%s"
+                           detected-style overlay-count (buffer-string)))
+          (should (eq detected-style 'dangling))
+          (should pearl-paren-style--annotation-enabled)
+          (should (> overlay-count 0)))))))
+
+(ert-deftest test-pearl-paren-style-annotation-convert-to-dangling ()
+  "Annotation should show when converting to dangling style."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Start with compact style
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")))\n")
+      ;; Convert to dangling
+      (pearl-paren-style-convert 'dangling)
+
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays))
+            (detected-style (pearl-paren-style--detect)))
+        (ert-info ((format "Detected style: %s\nAnnotation overlay count: %d\nBuffer content:\n%s"
+                           detected-style overlay-count (buffer-string)))
+          (should (eq detected-style 'dangling))
+          (should pearl-paren-style--annotation-enabled)
+          (should (> overlay-count 0)))))))
+
 (ert-deftest test-pearl-paren-style-annotation-disabled ()
   "Annotation disabled when pearl-paren-style-show-annotations is nil."
   (with-temp-buffer
@@ -1637,18 +1690,18 @@
           ;; Directly call update function
           (pearl-paren-style--update-annotations-incremental (point-min) (point-max))
 
-          ;; 收集信息
+          ;; Collect information
           (let ((buffer-text (buffer-string))
                 (overlay-count (length pearl-paren-style--annotation-overlays))
                 (overlay-positions (mapcar (lambda (ov) (overlay-start ov)) pearl-paren-style--annotation-overlays))
                 (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays)))
 
-            ;; 构建显示字符串
-            (let ((display-str (format "编辑后buffer内容:\n%s\nAnnotation overlay数量: %d\nOverlay位置: %s\nAnnotation文本: %s"
+            ;; Build display string
+            (let ((display-str (format "After edit buffer content:\n%s\nAnnotation overlay count: %d\nOverlay positions: %s\nAnnotation texts: %s"
                                        buffer-text overlay-count overlay-positions overlay-texts)))
-              ;; 在一个ert-info中显示所有信息
+              ;; Display all information in one ert-info
               (ert-info ((format "%s" display-str))
-                ;; 断言
+                ;; Assertions
                 (should (= overlay-count original-count))
                 ;; Check annotation updated
                 (let ((found-updated nil))

@@ -647,7 +647,12 @@ FILES is a list of file paths."
   "Toggle paren style between compact and dangling."
   (interactive)
   (pcase (pearl-paren-style--detect)
-    ('compact (pearl-paren-style--to-dangling))
+    ('compact (pearl-paren-style--to-dangling)
+              ;; Ensure annotations are shown after toggling to dangling
+              (when (and pearl-paren-style-show-annotations
+                         (eq (pearl-paren-style--detect) 'dangling))
+                (unless pearl-paren-style--annotation-enabled
+                  (pearl-paren-style--enable-annotations))))
     ('dangling (pearl-paren-style--to-compact))
     (_ (message "Unknown style, no toggle performed"))))
 
@@ -670,7 +675,12 @@ When `pearl-paren-style-show-annotations' is non-nil, closing
 parentheses will display annotations showing the corresponding
 opening parenthesis location."
   (interactive)
-  (pearl-paren-style--to-dangling))
+  (pearl-paren-style--to-dangling)
+  ;; Ensure annotations are shown even if file was already in dangling style
+  (when (and pearl-paren-style-show-annotations
+             (eq (pearl-paren-style--detect) 'dangling))
+    (unless pearl-paren-style--annotation-enabled
+      (pearl-paren-style--enable-annotations))))
 
 ;;;###autoload
 (defun pearl-paren-style-convert (style)
@@ -679,7 +689,12 @@ opening parenthesis location."
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))))
   (pcase style
     ('compact (pearl-paren-style--to-compact))
-    ('dangling (pearl-paren-style--to-dangling))
+    ('dangling (pearl-paren-style--to-dangling)
+               ;; Ensure annotations are shown after converting to dangling
+               (when (and pearl-paren-style-show-annotations
+                          (eq (pearl-paren-style--detect) 'dangling))
+                 (unless pearl-paren-style--annotation-enabled
+                   (pearl-paren-style--enable-annotations))))
     (_ (user-error "Unknown style: %s" style))))
 
 ;;;###autoload
