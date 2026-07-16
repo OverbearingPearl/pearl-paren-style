@@ -120,6 +120,48 @@ Annotations show:
 - Line and column numbers (1-based)
 - First 20 characters of the opening line
 
+### Annotation to Comment Conversion
+
+For permanent structural hints that persist across sessions and can be
+read by AI tools, annotations can be converted to real comments:
+
+```elisp
+;; Convert annotations to comments
+M-x pearl-paren-style-annotations-to-comments
+
+;; Convert comments back to annotations
+M-x pearl-paren-style-comments-to-annotations
+```
+
+Example conversion:
+
+```elisp
+;; Before (dangling style with annotations)
+(defun example ()
+  (let ((x 1))
+    (when x
+      (print x)
+    )  ← 3:4 (when x
+  )  ← 1:2 (let ((x 1))
+)  ← 0:0 (defun example ()
+
+;; After annotation-to-comment conversion
+(defun example ()
+  (let ((x 1))
+    (when x
+      (print x)
+    )  ;; ← 3:4 (when x
+  )  ;; ← 1:2 (let ((x 1))
+)  ;; ← 0:0 (defun example ()
+```
+
+The comment prefix `;; ← ` is configurable via
+`pearl-paren-style-annotation-comment-prefix`.
+
+**Use Case**: When working with AI tools, converting annotations to
+comments provides permanent structural hints that help the AI understand
+Lisp nesting relationships, even outside of Emacs.
+
 ### Single-line Preservation
 
 Single-line expressions remain unchanged in dangling style:

@@ -2769,5 +2769,225 @@
   )
 )
 
+;;;; Annotation-comment conversion tests
+
+(ert-deftest test-pearl-paren-style-annotation-to-comment-basic ()
+  "Basic annotation to comment conversion."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Create dangling style code with annotations
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      ;; Verify annotations exist
+      (should (> (length pearl-paren-style--annotation-overlays) 0))
+      ;; Convert to comments
+      (pearl-paren-style-annotations-to-comments)
+      ;; Verify overlays are cleared
+      (should (null pearl-paren-style--annotation-overlays))
+      ;; Verify comments exist
+      (should (string-match-p ";; ← " (buffer-string)))
+      ;; Verify content structure preserved
+      (should (string-match-p "(defun test ()" (buffer-string)))
+      (should (string-match-p "(when t" (buffer-string)))
+      ;; Verify comment format
+      (should (string-match-p ")  ;; ← " (buffer-string)))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-comment-to-annotation-basic ()
+  "Basic comment to annotation conversion."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Create code with annotation comments
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )  ;; ← 3:4 (when t\n)  ;; ← 0:0 (defun test ()\n")
+      ;; Convert to annotations
+      (pearl-paren-style-comments-to-annotations)
+      ;; Verify overlays created
+      (should (> (length pearl-paren-style--annotation-overlays) 0))
+      ;; Verify comments removed
+      (should-not (string-match-p ";; ← " (buffer-string)))
+      ;; Verify content structure preserved
+      (should (string-match-p "(defun test ()" (buffer-string)))
+      (should (string-match-p "(when t" (buffer-string)))
+      ;; Verify no extra spaces
+      (should (string-match-p ")\n)" (buffer-string)))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-annotation-roundtrip ()
+  "Roundtrip: annotation → comment → annotation."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t)
+          (original-content nil)
+         )
+      ;; Create dangling style
+      (insert "(defun test ()\n  (let ((x 1))\n    (when x\n      (print x)\n    )\n  )\n)")
+      (setq original-content (buffer-string))
+      (pearl-paren-style--to-dangling)
+      ;; Convert to comments
+      (pearl-paren-style-annotations-to-comments)
+      (let ((after-comment (buffer-string)))
+        ;; Verify comment format
+        (should (string-match-p ")  ;; ← " after-comment))
+        ;; Convert back to annotations
+        (pearl-paren-style-comments-to-annotations)
+        ;; Verify annotations restored
+        (should (> (length pearl-paren-style--annotation-overlays) 0))
+        ;; Convert back to comments again for comparison
+        (pearl-paren-style-annotations-to-comments)
+        (should (string= (buffer-string) after-comment))
+      )
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-comment-roundtrip ()
+  "Roundtrip: comment → annotation → comment."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t)
+          (original-comment "(defun test ()\n  (let ((x 1))\n    (when x\n      (print x)\n    )  ;; ← 3:4 (when x\n  )  ;; ← 2:2 (let ((x 1))\n)  ;; ← 1:0 (defun test ()\n")
+         )
+      (insert original-comment)
+      ;; Convert to annotations
+      (pearl-paren-style-comments-to-annotations)
+      ;; Verify overlays created
+      (should (> (length pearl-paren-style--annotation-overlays) 0))
+      ;; Verify comments removed
+      (should-not (string-match-p ";; ← " (buffer-string)))
+      ;; Convert back to comments
+      (pearl-paren-style-annotations-to-comments)
+      ;; Verify original comment content restored
+      (should (string= (buffer-string) original-comment))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-annotation-idempotent ()
+  "Multiple annotation-to-comment calls are idempotent."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      ;; First conversion
+      (pearl-paren-style-annotations-to-comments)
+      (let ((first-result (buffer-string)))
+        ;; Second conversion should be idempotent (no error, no change)
+        (pearl-paren-style-annotations-to-comments)
+        (should (string= (buffer-string) first-result))
+        ;; Third conversion
+        (pearl-paren-style-annotations-to-comments)
+        (should (string= (buffer-string) first-result))
+      )
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-comment-idempotent ()
+  "Multiple comment-to-annotation calls are idempotent."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )  ;; ← 3:4 (when t\n)  ;; ← 0:0 (defun test (\n")
+      ;; First conversion
+      (pearl-paren-style-comments-to-annotations)
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
+        ;; Second conversion should be idempotent (no change)
+        (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
+        ;; Overlay count should remain the same
+        (should (= (length pearl-paren-style--annotation-overlays) overlay-count))
+      )
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-no-annotation-residue ()
+  "No annotation overlays remain after conversion to comments."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      (should (> (length pearl-paren-style--annotation-overlays) 0))
+      (pearl-paren-style-annotations-to-comments)
+      (should (null pearl-paren-style--annotation-overlays))
+      ;; Also verify no change hooks remain
+      (should (null pearl-paren-style--annotation-debounce-timer))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-no-comment-residue ()
+  "No comment text remains after conversion to annotations."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )  ;; ← 3:4 (when t\n)  ;; ← 0:0 (defun test (\n")
+      ;; Convert to annotations
+      (pearl-paren-style-comments-to-annotations)
+      ;; Verify no comment text remains
+      (should-not (string-match-p ";; ← " (buffer-string)))
+      ;; Convert back to comments to verify complete removal
+      (pearl-paren-style-annotations-to-comments)
+      ;; Should have the original comment text
+      (should (string-match-p ";; ← " (buffer-string)))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-mixed-comments-handling ()
+  "Handle existing comments mixed with annotations."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Create code with both regular comments and annotation comments
+      (insert "(defun test ()\n  (when t  ; regular comment\n    (print \"hello\")\n  )  ;; ← 3:4 (when t  ; regular comment\n)  ;; ← 0:0 (defun test ()\n")
+      ;; Convert to annotations
+      (pearl-paren-style-comments-to-annotations)
+      ;; Verify regular comments preserved
+      (should (string-match-p "; regular comment" (buffer-string)))
+      ;; Verify annotation comments removed
+      (should-not (string-match-p ";; ← " (buffer-string)))
+      ;; Convert back
+      (pearl-paren-style-annotations-to-comments)
+      ;; Verify both types of comments present
+      (should (string-match-p "; regular comment" (buffer-string)))
+      (should (string-match-p ";; ← " (buffer-string)))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-conversion-empty-buffer ()
+  "Handle empty buffer in conversion functions."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Should not error on empty buffer
+      (should-error (pearl-paren-style-annotations-to-comments) :type 'user-error)
+      (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-conversion-compact-style ()
+  "Handle compact style buffer in conversion functions."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")))\n")
+      ;; Should error because no annotations in compact style
+      (should-error (pearl-paren-style-annotations-to-comments) :type 'user-error)
+      ;; Should error because no annotation comments
+      (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
+    )
+  )
+)
+
 (provide 'test-pearl-paren-style)
 ;;; test-pearl-paren-style.el ends here
