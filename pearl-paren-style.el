@@ -46,42 +46,51 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'color)
 
 (defgroup pearl-paren-style nil
   "Toggle Lisp paren style."
-  :group 'lisp)
+  :group 'lisp
+)
 
 (defface pearl-paren-style-annotation
   '((t :inherit font-lock-comment-face))
   "Face for parenthesis annotations."
-  :group 'pearl-paren-style)
+  :group 'pearl-paren-style
+)
 
 (defcustom pearl-paren-style-default 'compact
   "Default style when detection is ambiguous."
-  :type '(choice (const compact) (const dangling)))
+  :type '(choice (const compact) (const dangling))
+)
 
 (defcustom pearl-paren-style-show-annotations t
   "Whether to show annotations in dangling style.
 When non-nil, closing parentheses in dangling style will display
 annotations showing the corresponding opening parenthesis location."
   :type 'boolean
-  :group 'pearl-paren-style)
+  :group 'pearl-paren-style
+)
 
 (defcustom pearl-paren-style-annotation-delay 0.1
   "Delay in seconds before updating annotations after buffer changes.
 Smaller values make annotations update faster but may cause
 performance issues during rapid editing."
   :type 'number
-  :group 'pearl-paren-style)
+  :group 'pearl-paren-style
+)
 
 (defvar-local pearl-paren-style--annotation-overlays nil
-  "List of overlays used for annotation display.")
+  "List of overlays used for annotation display."
+)
 
 (defvar-local pearl-paren-style--annotation-enabled nil
-  "Non-nil if annotation is currently enabled.")
+  "Non-nil if annotation is currently enabled."
+)
 
 (defvar-local pearl-paren-style--annotation-debounce-timer nil
-  "Debounce timer for annotation updates.")
+  "Debounce timer for annotation updates."
+)
 
 (defun pearl-paren-style--in-string-or-comment-p (&optional pos)
   "Return non-nil if point is inside a string or comment.
@@ -95,7 +104,9 @@ If POS is provided, check at that position instead of current point."
           (save-excursion
             (and (>= (point) 2)
                  (eq (char-before) ?\\)
-                 (eq (char-before (1- (point))) ??)))
+                 (eq (char-before (1- (point))) ??)
+            )
+          )
           ;; Check for multi-line comment #| ... |#
           (save-excursion
             (let ((pos (point)))
@@ -103,7 +114,16 @@ If POS is provided, check at that position instead of current point."
                 (let ((start (point)))
                   (goto-char start)
                   (when (re-search-forward "|#" nil t)
-                    (<= pos (point)))))))))))
+                    (<= pos (point))
+                  )
+                )
+              )
+            )
+          )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--line-has-comment-p ()
   "Return non-nil if current line has a comment (starting with ;)."
@@ -113,55 +133,115 @@ If POS is provided, check at that position instead of current point."
       (when (search-forward ";" line-end t)
         ;; Verify it's really a comment, not inside string or character literal
         (nth 4 (syntax-ppss))  ; returns non-nil if in comment
-        ))))
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--should-dangle-p (open-pos closing-pos)
   "Return t if the paren at CLOSING-POS should be dangled relative to OPEN-POS.
 OPEN-POS is the position of the opening parenthesis.
 CLOSING-POS is the position of the closing parenthesis."
-  (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos)))
+  (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos))
+)
 
 (defun pearl-paren-style--get-annotation (closing-pos)
   "Get annotation for closing parenthesis at CLOSING-POS.
-Returns annotation string or nil if no annotation needed."
+Returns (STRING . DISTANCE) where DISTANCE is line difference, or nil."
   (save-excursion
     (goto-char closing-pos)
     (let ((open-pos (condition-case nil
                        ;; Use scan-lists with depth 1 to find matching opening parenthesis
                        (scan-lists (point) -1 1)
-                     (scan-error nil))))
+                     (scan-error nil)
+                    )
+          )
+         )
       (when open-pos
         (let ((open-line (line-number-at-pos open-pos))
-              (close-line (line-number-at-pos closing-pos)))
+              (close-line (line-number-at-pos closing-pos))
+             )
           (when (/= open-line close-line)
             (let ((open-col (save-excursion
                               (goto-char open-pos)
-                              (current-column)))
+                              (current-column)
+                            )
+                  )
                   (open-text (save-excursion
                                (goto-char open-pos)
                                (buffer-substring
                                 (point)
                                 (min (line-end-position)
-                                     (+ (point) 20))))))
-              (format " ← %d:%d %s" open-line open-col open-text))))))))
+                                     (+ (point) 20)
+                                )
+                               )
+                             )
+                  )
+                 )
+              (cons (format " ← %d:%d %s" open-line open-col open-text)
+                    (- close-line open-line)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+(defun pearl-paren-style--annotation-color-for-distance (distance)
+  "Calculate annotation color based on DISTANCE (lines from opening paren).
+Closer distance = blend more toward background (less visible)."
+  (let* ((base-color (face-attribute 'pearl-paren-style-annotation :foreground))
+         (bg-color (face-attribute 'default :background))
+         (threshold 20.0)
+         (ratio (min 1.0 (/ (float distance) threshold)))
+         (base-rgb (color-name-to-rgb base-color))
+         (bg-rgb (color-name-to-rgb bg-color))
+        )
+    (if (and base-rgb bg-rgb)
+        (apply #'color-rgb-to-hex
+               (cl-mapcar (lambda (b g)
+                            (+ (* b ratio) (* g (- 1.0 ratio)))
+                          )
+                          base-rgb bg-rgb
+               )
+        )
+      base-color
+    )
+  )
+)
 
 (defun pearl-paren-style--create-annotation-overlay (closing-pos)
   "Create annotation overlay for closing parenthesis at CLOSING-POS.
 Returns the overlay or nil if no annotation needed."
   (when (and pearl-paren-style--annotation-enabled
-             (not (pearl-paren-style--in-string-or-comment-p closing-pos)))
-    (let ((annotation (pearl-paren-style--get-annotation closing-pos)))
-      (when annotation
-        (let ((ov (make-overlay closing-pos (1+ closing-pos))))
+             (not (pearl-paren-style--in-string-or-comment-p closing-pos))
+        )
+    (let ((result (pearl-paren-style--get-annotation closing-pos)))
+      (when result
+        (let* ((annotation (car result))
+               (distance (cdr result))
+               (ov (make-overlay closing-pos (1+ closing-pos)))
+               (color (pearl-paren-style--annotation-color-for-distance distance))
+              )
           (overlay-put ov 'category 'pearl-paren-style-annotation)
-          (overlay-put ov 'after-string annotation)
+          (overlay-put ov 'after-string
+                       (propertize annotation 'face `(:foreground ,color))
+          )
           (overlay-put ov 'pearl-paren-style-closing-pos closing-pos)
-          ov)))))
+          ov
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--clear-annotations ()
   "Remove all annotation overlays."
   (mapc 'delete-overlay pearl-paren-style--annotation-overlays)
-  (setq pearl-paren-style--annotation-overlays nil))
+  (setq pearl-paren-style--annotation-overlays nil)
+)
 
 (defun pearl-paren-style--update-annotations-full ()
   "Create annotations for all closing parentheses in buffer."
@@ -173,7 +253,14 @@ Returns the overlay or nil if no annotation needed."
         (unless (pearl-paren-style--in-string-or-comment-p)
           (let ((ov (pearl-paren-style--create-annotation-overlay (point))))
             (when ov
-              (push ov pearl-paren-style--annotation-overlays))))))))
+              (push ov pearl-paren-style--annotation-overlays)
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--update-annotations-incremental (beg end)
   "Update annotations incrementally in region BEG to END."
@@ -189,54 +276,98 @@ Returns the overlay or nil if no annotation needed."
               (goto-char closing-pos)
               (let ((open-pos (condition-case nil
                                  (scan-lists (point) -1 1)
-                               (scan-error nil))))
+                               (scan-error nil)
+                              )
+                    )
+                   )
                 (when (and open-pos
                            (or (<= beg open-pos end) ; Opening parenthesis in modified region
                                (<= beg closing-pos end) ; Closing parenthesis in modified region
-                               ))
-                  (push ov affected-overlays)))))))
+                           )
+                      )
+                  (push ov affected-overlays)
+                )
+              )
+            )
+          )
+        )
+      )
 
       ;; 2. Update affected overlays
       (dolist (ov affected-overlays)
         (let ((closing-pos (overlay-start ov)))
           (unless (pearl-paren-style--in-string-or-comment-p closing-pos)
-            (let ((annotation (pearl-paren-style--get-annotation closing-pos)))
-              (if annotation
-                  (overlay-put ov 'after-string annotation)
+            (let ((result (pearl-paren-style--get-annotation closing-pos)))
+              (if result
+                  (let* ((annotation (car result))
+                         (distance (cdr result))
+                         (color (pearl-paren-style--annotation-color-for-distance distance))
+                        )
+                    (overlay-put ov 'after-string
+                                 (propertize annotation 'face `(:foreground ,color))
+                    )
+                  )
                 ;; If no annotation, delete overlay
                 (delete-overlay ov)
                 (setq pearl-paren-style--annotation-overlays
-                      (delq ov pearl-paren-style--annotation-overlays)))))))
+                      (delq ov pearl-paren-style--annotation-overlays)
+                )
+              )
+            )
+          )
+        )
+      )
 
     ;; 3. Rescan affected region for new overlays
     (save-excursion
       (let ((scan-end (min (point-max) (+ end 200)))
-            (scan-beg (max (point-min) (- beg 200))))
+            (scan-beg (max (point-min) (- beg 200)))
+           )
         (goto-char scan-end)
         (while (re-search-backward ")" scan-beg t)
           (let ((pos (point)))
             (unless (or (pearl-paren-style--in-string-or-comment-p)
                         (cl-some (lambda (ov)
-                                   (= (overlay-start ov) pos))
-                                 pearl-paren-style--annotation-overlays))
+                                   (= (overlay-start ov) pos)
+                                 )
+                                 pearl-paren-style--annotation-overlays
+                        )
+                    )
               (let ((ov (pearl-paren-style--create-annotation-overlay pos)))
                 (when ov
-                  (push ov pearl-paren-style--annotation-overlays)))))))))))
+                  (push ov pearl-paren-style--annotation-overlays)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    )
+  )
+)
 
 (defun pearl-paren-style--schedule-debounced-update (beg end)
   "Schedule annotation update with debounce for region BEG to END."
   (when pearl-paren-style--annotation-debounce-timer
-    (cancel-timer pearl-paren-style--annotation-debounce-timer))
+    (cancel-timer pearl-paren-style--annotation-debounce-timer)
+  )
   (setq pearl-paren-style--annotation-debounce-timer
         (run-with-timer pearl-paren-style-annotation-delay nil
-                         #'pearl-paren-style--debounced-update beg end)))
+                         #'pearl-paren-style--debounced-update beg end
+        )
+  )
+)
 
 (defun pearl-paren-style--debounced-update (beg end)
   "Debounced annotation update for region BEG to END."
   (setq pearl-paren-style--annotation-debounce-timer nil)
   (when (and pearl-paren-style--annotation-enabled
-             (get-buffer-window (current-buffer)))
-    (pearl-paren-style--update-annotations-incremental beg end)))
+             (get-buffer-window (current-buffer))
+        )
+    (pearl-paren-style--update-annotations-incremental beg end)
+  )
+)
 
 (defun pearl-paren-style--after-change (beg end _len)
   "Handle buffer changes to update annotations."
@@ -247,49 +378,65 @@ Returns the overlay or nil if no annotation needed."
         ;; Check the changed region for parentheses
         (goto-char (max (point-min) (- beg 1))) ; Check one char before beg
         (when (re-search-forward "[()]" (min (point-max) (+ end 1)) t)
-          (setq region-changed t))
+          (setq region-changed t)
+        )
 
         ;; Also check if line numbers changed (affects annotation line numbers)
         (unless region-changed
           (goto-char beg)
           (beginning-of-line)
           (when (re-search-forward "\n" end t)
-            (setq region-changed t)))
+            (setq region-changed t)
+          )
+        )
 
         (when region-changed
           (pearl-paren-style--schedule-debounced-update
            (max (point-min) (- beg 100)) ; Expand region for safety
-           (min (point-max) (+ end 100))))))))
+           (min (point-max) (+ end 100))
+          )
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--setup-change-hook ()
   "Setup change hook for annotation updates."
-  (add-hook 'after-change-functions #'pearl-paren-style--after-change nil t))
+  (add-hook 'after-change-functions #'pearl-paren-style--after-change nil t)
+)
 
 (defun pearl-paren-style--teardown-change-hook ()
   "Remove change hook."
-  (remove-hook 'after-change-functions #'pearl-paren-style--after-change t))
+  (remove-hook 'after-change-functions #'pearl-paren-style--after-change t)
+)
 
 (defun pearl-paren-style--enable-annotations ()
   "Enable annotations for current buffer."
   (setq pearl-paren-style--annotation-enabled t)
   (pearl-paren-style--setup-change-hook)
-  (pearl-paren-style--update-annotations-full))
+  (pearl-paren-style--update-annotations-full)
+)
 
 (defun pearl-paren-style--disable-annotations ()
   "Disable annotations for current buffer."
   (setq pearl-paren-style--annotation-enabled nil)
   (when pearl-paren-style--annotation-debounce-timer
     (cancel-timer pearl-paren-style--annotation-debounce-timer)
-    (setq pearl-paren-style--annotation-debounce-timer nil))
+    (setq pearl-paren-style--annotation-debounce-timer nil)
+  )
   (pearl-paren-style--teardown-change-hook)
-  (pearl-paren-style--clear-annotations))
+  (pearl-paren-style--clear-annotations)
+)
 
 (defun pearl-paren-style--dangle-target-indent (open-pos)
   "Calculate target indentation column for OPEN-POS.
 OPEN-POS is the position of the opening parenthesis."
   (save-excursion
     (goto-char open-pos)
-    (current-column)))
+    (current-column)
+  )
+)
 
 (defun pearl-paren-style--dangle-is-correct-p (line-start current-col target-col)
   "Check if paren is already correctly dangled.
@@ -297,7 +444,9 @@ LINE-START is the position at the beginning of the line.
 CURRENT-COL is the current column of the closing paren.
 TARGET-COL is the target column for dangling."
   (and (looking-back "^\\s-*" line-start)
-       (= current-col target-col)))
+       (= current-col target-col)
+  )
+)
 
 (defun pearl-paren-style--dangle-fix-indent (line-start target-col)
   "Fix indentation for a paren already on its own line.
@@ -306,7 +455,9 @@ TARGET-COL is the target column for indentation."
   (save-excursion
     (beginning-of-line)
     (delete-horizontal-space)
-    (indent-to target-col)))
+    (indent-to target-col)
+  )
+)
 
 (defun pearl-paren-style--dangle-move-to-new-line (open-pos closing-pos target-col)
   "Move paren at CLOSING-POS to a new line with TARGET-COL indent.
@@ -315,7 +466,8 @@ OPEN-POS is the position of the opening parenthesis.
 CLOSING-POS is the position of the closing parenthesis.
 TARGET-COL is the target column for indentation."
   (let* ((end-of-line (line-end-position))
-         comment-text)
+         comment-text
+        )
     ;; Extract comment if exists
     (save-excursion
       (goto-char closing-pos)
@@ -323,9 +475,13 @@ TARGET-COL is the target column for indentation."
       (let ((after-paren (point)))
         (skip-chars-forward " \t" end-of-line)
         (when (and (< (point) end-of-line)
-                   (= (char-after) ?\;))
+                   (= (char-after) ?\;)
+              )
           (setq comment-text (buffer-substring after-paren end-of-line))
-          (delete-region after-paren end-of-line))))
+          (delete-region after-paren end-of-line)
+        )
+      )
+    )
     ;; Move paren
     (save-excursion
       (goto-char closing-pos)
@@ -337,7 +493,13 @@ TARGET-COL is the target column for indentation."
       (when comment-text
         (insert (if (string-match-p "^[ \t]" comment-text)
                     comment-text
-                  (concat " " comment-text)))))))
+                  (concat " " comment-text)
+                )
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--line-has-code-p ()
   "Return non-nil if current line has actual code (not just parens and whitespace)."
@@ -346,10 +508,15 @@ TARGET-COL is the target column for indentation."
     (skip-chars-forward " \t")
     (while (and (not (eolp))
                 (or (= (char-after) ?\()
-                    (= (char-after) ?\))))
+                    (= (char-after) ?\))
+                )
+           )
       (forward-char)
-      (skip-chars-forward " \t"))
-    (not (eolp))))
+      (skip-chars-forward " \t")
+    )
+    (not (eolp))
+  )
+)
 
 (defun pearl-paren-style--calculate-compact-indent (pos)
   "Calculate proper indentation for line at POS in compact style.
@@ -359,7 +526,9 @@ POS is the position in the buffer."
   (save-excursion
     (goto-char pos)
     (beginning-of-line)
-    (calculate-lisp-indent)))
+    (calculate-lisp-indent)
+  )
+)
 
 (defun pearl-paren-style--check-balanced-p (&optional beg end)
   "Check if parentheses are balanced in region from BEG to END.
@@ -371,10 +540,15 @@ END is the end position of the region."
         (if (and beg end)
             (save-restriction
               (narrow-to-region beg end)
-              (check-parens))
-          (check-parens))
-        t)
-    (error nil)))
+              (check-parens)
+            )
+          (check-parens)
+        )
+        t
+      )
+    (error nil)
+  )
+)
 
 (defun pearl-paren-style--classify-closing-paren (closing-pos)
   "Classify the closing paren at CLOSING-POS.
@@ -383,23 +557,36 @@ CLOSING-POS is the position of the closing parenthesis."
   (let ((open-pos (condition-case nil
                      (save-excursion
                        (goto-char closing-pos)
-                       (scan-lists (point) -1 1))
-                   (scan-error nil))))
+                       (scan-lists (point) -1 1)
+                     )
+                   (scan-error nil)
+                  )
+        )
+       )
     (when open-pos
       ;; Ignore backquote forms like `(foo)
       (unless (save-excursion
                 (goto-char open-pos)
-                (eq (char-before) ?\`))
+                (eq (char-before) ?\`)
+              )
         ;; Only classify if it spans multiple lines
         (when (/= (line-number-at-pos open-pos)
-                  (line-number-at-pos closing-pos))
+                  (line-number-at-pos closing-pos)
+              )
           (save-excursion
             (goto-char closing-pos)
             (beginning-of-line)
             (skip-chars-forward " \t")
             (if (= (point) closing-pos)
                 'dangling
-              'compact)))))))
+              'compact
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--detect ()
   "Return current style: `compact', `dangling', or nil."
@@ -407,7 +594,8 @@ CLOSING-POS is the position of the closing parenthesis."
     (goto-char (point-min))
     (let ((dangling 0)
           (compact 0)
-          (has-parens nil))
+          (has-parens nil)
+         )
       (while (search-forward ")" nil t)
         (unless (pearl-paren-style--in-string-or-comment-p)
           (setq has-parens t)
@@ -415,11 +603,20 @@ CLOSING-POS is the position of the closing parenthesis."
             (when style
               (pcase style
                 ('dangling (cl-incf dangling))
-                ('compact (cl-incf compact)))))))
+                ('compact (cl-incf compact))
+              )
+            )
+          )
+        )
+      )
       (cond ((> dangling 0) 'dangling)
             ((> compact 0) 'compact)
             (has-parens 'compact)
-            (t nil)))))
+            (t nil)
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--to-dangling ()
   "Convert buffer to dangling style.
@@ -431,41 +628,67 @@ Single-line parens like (foo) remain unchanged."
       (unless (pearl-paren-style--in-string-or-comment-p)
         (let ((closing-pos (point))
               (line-start (line-beginning-position))
-              (current-col (current-column)))
+              (current-col (current-column))
+             )
           (let ((open-pos (condition-case nil
                              (scan-lists (point) -1 1)
-                           (scan-error nil))))
+                           (scan-error nil)
+                          )
+                )
+               )
             (when (and open-pos
-                       (pearl-paren-style--should-dangle-p open-pos closing-pos))
+                       (pearl-paren-style--should-dangle-p open-pos closing-pos)
+                  )
               (let ((target-col (pearl-paren-style--dangle-target-indent open-pos)))
                 (cond
                  ;; Already correct: do nothing
                  ((pearl-paren-style--dangle-is-correct-p line-start current-col target-col)
-                  nil)
+                  nil
+                 )
                  ;; At line start but wrong indent: fix indent
                  ((looking-back "^\\s-*" line-start)
-                  (pearl-paren-style--dangle-fix-indent line-start target-col))
+                  (pearl-paren-style--dangle-fix-indent line-start target-col)
+                 )
                  ;; Not at line start: move to new line
                  (t
-                  (pearl-paren-style--dangle-move-to-new-line open-pos closing-pos target-col))))))))))
+                  (pearl-paren-style--dangle-move-to-new-line open-pos closing-pos target-col)
+                 )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
   (when pearl-paren-style-show-annotations
-    (pearl-paren-style--enable-annotations))
+    (pearl-paren-style--enable-annotations)
+  )
   (message "Converted to dangling style%s"
-           (if pearl-paren-style-show-annotations " with annotations" "")))
+           (if pearl-paren-style-show-annotations " with annotations" "")
+  )
+)
 
 (defun pearl-paren-style--is-dangling-p (closing-pos)
   "Return t if the paren at CLOSING-POS is dangling (on its own line).
 CLOSING-POS is the position of the closing parenthesis."
   (let ((open-pos (condition-case nil
                      (scan-lists closing-pos -1 1)
-                   (scan-error nil))))
+                   (scan-error nil)
+                  )
+        )
+       )
     (and open-pos
          (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos))
          (save-excursion
            (goto-char closing-pos)
            (beginning-of-line)
            (skip-chars-forward " \t")
-           (= (point) closing-pos)))))
+           (= (point) closing-pos)
+         )
+    )
+  )
+)
 
 (defun pearl-paren-style--prev-line-has-comment-p (line-start)
   "Return t if the line before LINE-START has a comment.
@@ -473,7 +696,9 @@ LINE-START is the position at the beginning of the line."
   (save-excursion
     (goto-char line-start)
     (forward-line -1)
-    (pearl-paren-style--line-has-comment-p)))
+    (pearl-paren-style--line-has-comment-p)
+  )
+)
 
 (defun pearl-paren-style--compact-fix-indent (pos)
   "Fix indentation for the line containing POS.
@@ -485,15 +710,23 @@ POS is the position in the buffer."
             (goto-char pos)
             (beginning-of-line)
             (skip-chars-forward " \t")
-            (current-column))))
+            (current-column)
+          )
+         )
+        )
     (when (and target-indent
-               (/= current-indent target-indent))
+               (/= current-indent target-indent)
+          )
       (save-excursion
         (goto-char pos)
         (beginning-of-line)
         (delete-horizontal-space)
-        (indent-to target-indent))
-      t)))
+        (indent-to target-indent)
+      )
+      t
+    )
+  )
+)
 
 (defun pearl-paren-style--compact-merge-to-prev-line (closing-pos)
   "Move the dangling paren at CLOSING-POS to the end of the previous line.
@@ -503,7 +736,8 @@ CLOSING-POS is the position of the closing parenthesis."
          (line-end (line-end-position))
          (comment-text nil)
          (comment-leading-spaces "")
-         (rest-of-line (buffer-substring closing-pos line-end)))
+         (rest-of-line (buffer-substring closing-pos line-end))
+        )
 
     ;; Extract comment if exists
     (save-excursion
@@ -512,10 +746,14 @@ CLOSING-POS is the position of the closing parenthesis."
       (let ((space-start (point)))
         (skip-chars-forward " \t" line-end)
         (when (and (< (point) line-end)
-                   (= (char-after) ?\;))
+                   (= (char-after) ?\;)
+              )
           (setq comment-leading-spaces (buffer-substring space-start (point)))
           (setq comment-text (buffer-substring (point) line-end))
-          (setq rest-of-line ")"))))
+          (setq rest-of-line ")")
+        )
+      )
+    )
 
     ;; Delete current line
     (delete-region line-start (line-beginning-position 2))
@@ -529,8 +767,14 @@ CLOSING-POS is the position of the closing parenthesis."
       (when comment-text
         (insert (if (string-empty-p comment-leading-spaces)
                     " "
-                  comment-leading-spaces)
-                comment-text)))))
+                  comment-leading-spaces
+                )
+                comment-text
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--cleanup-trailing-blank-lines ()
   "Remove trailing blank lines, ensuring file ends with a single newline."
@@ -539,7 +783,10 @@ CLOSING-POS is the position of the closing parenthesis."
     (skip-chars-backward "\n")
     (when (< (point) (point-max))
       (delete-region (point) (point-max))
-      (insert "\n"))))
+      (insert "\n")
+    )
+  )
+)
 
 (defun pearl-paren-style--to-compact ()
   "Convert buffer to compact style."
@@ -552,18 +799,31 @@ CLOSING-POS is the position of the closing parenthesis."
         (while (search-backward ")" nil t)
           (unless (pearl-paren-style--in-string-or-comment-p)
             (let ((closing-pos (point))
-                  (line-start (line-beginning-position)))
+                  (line-start (line-beginning-position))
+                 )
               (when (and (looking-back "^\\s-*" line-start)
-                         (pearl-paren-style--is-dangling-p closing-pos))
+                         (pearl-paren-style--is-dangling-p closing-pos)
+                    )
                 (if (pearl-paren-style--prev-line-has-comment-p line-start)
                     (when (pearl-paren-style--compact-fix-indent closing-pos)
-                      (setq changed t))
+                      (setq changed t)
+                    )
                   (pearl-paren-style--compact-merge-to-prev-line closing-pos)
-                  (setq changed t))))))
+                  (setq changed t)
+                )
+              )
+            )
+          )
+        )
         (when changed
-          (goto-char (point-max)))))
-    (pearl-paren-style--cleanup-trailing-blank-lines))
-  (message "Converted to compact style"))
+          (goto-char (point-max))
+        )
+      )
+    )
+    (pearl-paren-style--cleanup-trailing-blank-lines)
+  )
+  (message "Converted to compact style")
+)
 
 (defun pearl-paren-style--process-file (file style)
   "Process FILE converting to STYLE.
@@ -573,9 +833,11 @@ FILE is the path to the file to process.
 STYLE is either 'compact or 'dangling."
   (cond
    ((not (file-exists-p file))
-    (cons 'error (format "File not found: %s" file)))
+    (cons 'error (format "File not found: %s" file))
+   )
    ((not (file-readable-p file))
-    (cons 'error (format "File not readable: %s" file)))
+    (cons 'error (format "File not readable: %s" file))
+   )
    (t
     (condition-case err
         (with-temp-buffer
@@ -587,13 +849,21 @@ STYLE is either 'compact or 'dangling."
                 ;; Core conversion logic: internal, fail fast on errors
                 (pcase style
                   ('compact (pearl-paren-style--to-compact))
-                  ('dangling (pearl-paren-style--to-dangling)))
+                  ('dangling (pearl-paren-style--to-dangling))
+                )
                 ;; File write is external IO, may signal file-error
                 (write-region (point-min) (point-max) file nil 'silent)
-                (cons 'success file))
-            (cons 'error (format "Unbalanced parentheses in file: %s" file))))
+                (cons 'success file)
+              )
+            (cons 'error (format "Unbalanced parentheses in file: %s" file))
+          )
+        )
       ;; Only catch file IO errors; let internal logic errors bubble up
-      (file-error (cons 'error (format "IO error on %s: %s" file (error-message-string err))))))))
+      (file-error (cons 'error (format "IO error on %s: %s" file (error-message-string err))))
+    )
+   )
+  )
+)
 
 (defun pearl-paren-style--collect-el-files (files)
   "Collect all .el files from FILES list.
@@ -604,24 +874,39 @@ FILES is a list of file paths."
            append (if (file-directory-p file)
                       (directory-files-recursively file "\\.el$" t)  ; Add t to follow symlinks
                     (when (string-match "\\.el$" file)
-                      (list file)))))
+                      (list file)
+                    )
+                  )
+  )
+)
 
 (defun pearl-paren-style--read-files ()
   "Read file selection interactively.
 Return list of files, preferring Dired marked files when in Dired mode."
   (if (and (derived-mode-p 'dired-mode)
-           (dired-get-marked-files))
+           (dired-get-marked-files)
+      )
       (dired-get-marked-files)
     (let ((selected (read-file-name "Select files (wildcards allowed): "
                                     nil nil t nil
                                     (lambda (name)
                                       (or (file-directory-p name)
-                                          (string-match "\\.el$" name))))))
+                                          (string-match "\\.el$" name)
+                                      )
+                                    )
+                    )
+          )
+         )
       (if (stringp selected)
           (if (file-directory-p selected)
               (list selected)
-            (list selected))
-        selected))))
+            (list selected)
+          )
+        selected
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--with-el-files (files style)
   "Process .el FILES with STYLE, handling collection, confirmation, and reporting.
@@ -629,10 +914,12 @@ STYLE is 'compact or 'dangling.
 FILES is a list of file paths."
   (let ((el-files (pearl-paren-style--collect-el-files files)))
     (when (null el-files)
-      (user-error "No .el files selected"))
+      (user-error "No .el files selected")
+    )
     (let ((count (length el-files)))
       (unless (y-or-n-p (format "Convert %d file(s) to %s style? " count style))
-        (user-error "Operation cancelled"))
+        (user-error "Operation cancelled")
+      )
       (cl-loop for file in el-files
                for result = (pearl-paren-style--process-file file style)
                when (eq (car result) 'success)
@@ -640,7 +927,11 @@ FILES is a list of file paths."
                when (eq (car result) 'error)
                do (message "Failed to process %s: %s" file (cdr result))
                finally do (message "Processed %d/%d file(s)" processed count)
-               finally return (> processed 0)))))
+               finally return (> processed 0)
+      )
+    )
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-toggle ()
@@ -650,18 +941,25 @@ FILES is a list of file paths."
     ('compact (pearl-paren-style--to-dangling)
               ;; Ensure annotations are shown after toggling to dangling
               (when (and pearl-paren-style-show-annotations
-                         (eq (pearl-paren-style--detect) 'dangling))
+                         (eq (pearl-paren-style--detect) 'dangling)
+                    )
                 (unless pearl-paren-style--annotation-enabled
-                  (pearl-paren-style--enable-annotations))))
+                  (pearl-paren-style--enable-annotations)
+                )
+              )
+    )
     ('dangling (pearl-paren-style--to-compact))
-    (_ (message "Unknown style, no toggle performed"))))
+    (_ (message "Unknown style, no toggle performed"))
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-compact ()
   "Convert to compact style (closing parens on same line)."
   (interactive)
   (pearl-paren-style--to-compact)
-  (message "Converted to compact style"))
+  (message "Converted to compact style")
+)
 
 ;;;###autoload
 (defun pearl-paren-style-dangling ()
@@ -678,57 +976,78 @@ opening parenthesis location."
   (pearl-paren-style--to-dangling)
   ;; Ensure annotations are shown even if file was already in dangling style
   (when (and pearl-paren-style-show-annotations
-             (eq (pearl-paren-style--detect) 'dangling))
+             (eq (pearl-paren-style--detect) 'dangling)
+        )
     (unless pearl-paren-style--annotation-enabled
-      (pearl-paren-style--enable-annotations))))
+      (pearl-paren-style--enable-annotations)
+    )
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-convert (style)
   "Convert to STYLE ('compact or 'dangling)."
   (interactive
-   (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))))
+   (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t)))
+  )
   (pcase style
     ('compact (pearl-paren-style--to-compact))
     ('dangling (pearl-paren-style--to-dangling)
                ;; Ensure annotations are shown after converting to dangling
                (when (and pearl-paren-style-show-annotations
-                          (eq (pearl-paren-style--detect) 'dangling))
+                          (eq (pearl-paren-style--detect) 'dangling)
+                     )
                  (unless pearl-paren-style--annotation-enabled
-                   (pearl-paren-style--enable-annotations))))
-    (_ (user-error "Unknown style: %s" style))))
+                   (pearl-paren-style--enable-annotations)
+                 )
+               )
+    )
+    (_ (user-error "Unknown style: %s" style))
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-compact-region (beg end)
   "Convert region from BEG to END to compact style."
   (interactive "r")
   (unless (pearl-paren-style--check-balanced-p beg end)
-    (user-error "Unbalanced parentheses in selected region"))
+    (user-error "Unbalanced parentheses in selected region")
+  )
   (save-restriction
     (narrow-to-region beg end)
-    (pearl-paren-style--to-compact)))
+    (pearl-paren-style--to-compact)
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-dangling-region (beg end)
   "Convert region from BEG to END to dangling style."
   (interactive "r")
   (unless (pearl-paren-style--check-balanced-p beg end)
-    (user-error "Unbalanced parentheses in selected region"))
+    (user-error "Unbalanced parentheses in selected region")
+  )
   (save-restriction
     (narrow-to-region beg end)
-    (pearl-paren-style--to-dangling)))
+    (pearl-paren-style--to-dangling)
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-toggle-region (beg end)
   "Toggle paren style in region from BEG to END."
   (interactive "r")
   (unless (pearl-paren-style--check-balanced-p beg end)
-    (user-error "Unbalanced parentheses in selected region"))
+    (user-error "Unbalanced parentheses in selected region")
+  )
   (save-restriction
     (narrow-to-region beg end)
     (pcase (pearl-paren-style--detect)
       ('compact (pearl-paren-style--to-dangling))
       ('dangling (pearl-paren-style--to-compact))
-      (_ (message "Unknown style in region, no toggle performed")))))
+      (_ (message "Unknown style in region, no toggle performed"))
+    )
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-convert-region (style beg end)
@@ -736,17 +1055,24 @@ opening parenthesis location."
   (interactive
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
          (region-beginning)
-         (region-end)))
+         (region-end)
+   )
+  )
   (unless (use-region-p)
-    (user-error "No region selected"))
+    (user-error "No region selected")
+  )
   (unless (pearl-paren-style--check-balanced-p beg end)
-    (user-error "Unbalanced parentheses in selected region"))
+    (user-error "Unbalanced parentheses in selected region")
+  )
   (save-restriction
     (narrow-to-region beg end)
     (pcase style
       ('compact (pearl-paren-style--to-compact))
       ('dangling (pearl-paren-style--to-dangling))
-      (_ (user-error "Unknown style: %s" style)))))
+      (_ (user-error "Unknown style: %s" style))
+    )
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-compact-files (files)
@@ -754,7 +1080,8 @@ opening parenthesis location."
 FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
   (interactive (list (pearl-paren-style--read-files)))
-  (pearl-paren-style--with-el-files files 'compact))
+  (pearl-paren-style--with-el-files files 'compact)
+)
 
 ;;;###autoload
 (defun pearl-paren-style-dangling-files (files)
@@ -762,7 +1089,8 @@ If called interactively without Dired selection, prompt for files."
 FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
   (interactive (list (pearl-paren-style--read-files)))
-  (pearl-paren-style--with-el-files files 'dangling))
+  (pearl-paren-style--with-el-files files 'dangling)
+)
 
 ;;;###autoload
 (defun pearl-paren-style-convert-files (style files)
@@ -771,8 +1099,11 @@ FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
   (interactive
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
-         (pearl-paren-style--read-files)))
-  (pearl-paren-style--with-el-files files style))
+         (pearl-paren-style--read-files)
+   )
+  )
+  (pearl-paren-style--with-el-files files style)
+)
 
 ;;;###autoload
 (defun pearl-paren-style-run-tests ()
@@ -781,15 +1112,19 @@ If called interactively without Dired selection, prompt for files."
   (require 'ert)
   (ert-delete-all-tests)
   (let* ((this-file (symbol-file 'pearl-paren-style-run-tests))
-         (dir (file-name-directory this-file)))
+         (dir (file-name-directory this-file))
+        )
     ;; Unload old code
     (when (featurep 'pearl-paren-style)
-      (unload-feature 'pearl-paren-style t))
+      (unload-feature 'pearl-paren-style t)
+    )
     ;; Reload source files (force load .el, ignore .elc)
     (load (expand-file-name "pearl-paren-style" dir) nil t)
     ;; Load test files
-    (load (expand-file-name "test-pearl-paren-style" dir) nil t))
-  (ert t))
+    (load (expand-file-name "test-pearl-paren-style" dir) nil t)
+  )
+  (ert t)
+)
 
 ;;;###autoload
 (defun pearl-paren-style-dwim ()
@@ -798,16 +1133,22 @@ If called interactively without Dired selection, prompt for files."
   (cond
    ;; Case 1: region is active
    ((use-region-p)
-    (call-interactively 'pearl-paren-style-convert-region))
+    (call-interactively 'pearl-paren-style-convert-region)
+   )
 
    ;; Case 2: files/directories are selected in Dired
    ((and (derived-mode-p 'dired-mode)
-         (dired-get-marked-files))
-    (call-interactively 'pearl-paren-style-convert-files))
+         (dired-get-marked-files)
+    )
+    (call-interactively 'pearl-paren-style-convert-files)
+   )
 
    ;; Case 3: default (entire buffer)
    (t
-    (pearl-paren-style-toggle))))
+    (pearl-paren-style-toggle)
+   )
+  )
+)
 
 (provide 'pearl-paren-style)
 ;;; pearl-paren-style.el ends here
