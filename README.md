@@ -93,6 +93,33 @@ Add `-files` suffix for file operations (e.g., `pearl-paren-style-dangling-files
 )
 ```
 
+### Annotation Display
+
+When converting to dangling style with `pearl-paren-style-show-annotations` enabled,
+closing parentheses display annotations showing the corresponding opening parenthesis:
+
+```elisp
+;; Before (compact style)
+(defun example ()
+  (let ((x 1))
+    (when x
+      (print x))))
+
+;; After (dangling style with annotations)
+(defun example ()
+  (let ((x 1))
+    (when x
+      (print x)
+    )         ← 3:4 (when x
+  )           ← 1:2 (let ((x 1))
+)             ← 0:0 (defun example ()
+```
+
+Annotations show:
+- `← line:column (opening-text...)`
+- Line and column numbers (1-based)
+- First 20 characters of the opening line
+
 ### Single-line Preservation
 
 Single-line expressions remain unchanged in dangling style:
@@ -120,6 +147,19 @@ Comments are preserved during conversion:
   )                   ; end let
 )
 ```
+
+### Annotation Configuration
+
+```elisp
+;; Enable/disable annotations (default: t)
+(setq pearl-paren-style-show-annotations t)
+
+;; Set annotation update delay (default: 0.1 seconds)
+(setq pearl-paren-style-annotation-delay 0.1)
+```
+
+Annotations automatically update after buffer changes with a debounced delay
+to maintain performance during editing.
 
 ## Configuration
 

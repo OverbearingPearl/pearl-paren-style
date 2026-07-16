@@ -20,10 +20,13 @@
 ;; Features:
 ;;
 ;; - Convert between compact and dangling styles
+;; - Annotation display for dangling style showing opening parenthesis location
+;; - Automatic annotation updates with debounced change detection
 ;; - Preserves single-line expressions like (foo)
 ;; - Handles inline and trailing comments
 ;; - Process regions, files, or Dired selections
 ;; - Validates parenthesis balance before conversion
+;; - Configurable annotation display and update delay
 ;;
 ;; Commands:
 ;; - pearl-paren-style-toggle: Auto-detect and toggle style
@@ -48,28 +51,59 @@
   "Toggle Lisp paren style."
   :group 'lisp)
 
+(defface pearl-paren-style-annotation
+  '((t :inherit font-lock-comment-face))
+  "Face for parenthesis annotations."
+  :group 'pearl-paren-style)
+
 (defcustom pearl-paren-style-default 'compact
   "Default style when detection is ambiguous."
   :type '(choice (const compact) (const dangling)))
 
-(defun pearl-paren-style--in-string-or-comment-p ()
-  "Return non-nil if point is inside a string or comment."
-  (let ((state (syntax-ppss)))
-    (or (nth 3 state)    ; inside string
-        (nth 4 state)    ; inside comment
-        ;; Check for character literal starting with ?\
-        (save-excursion
-          (and (>= (point) 2)
-               (eq (char-before) ?\\)
-               (eq (char-before (1- (point))) ??)))
-        ;; Check for multi-line comment #| ... |#
-        (save-excursion
-          (let ((pos (point)))
-            (when (re-search-backward "#|" nil t)
-              (let ((start (point)))
-                (goto-char start)
-                (when (re-search-forward "|#" nil t)
-                  (<= pos (point))))))))))
+(defcustom pearl-paren-style-show-annotations t
+  "Whether to show annotations in dangling style.
+When non-nil, closing parentheses in dangling style will display
+annotations showing the corresponding opening parenthesis location."
+  :type 'boolean
+  :group 'pearl-paren-style)
+
+(defcustom pearl-paren-style-annotation-delay 0.1
+  "Delay in seconds before updating annotations after buffer changes.
+Smaller values make annotations update faster but may cause
+performance issues during rapid editing."
+  :type 'number
+  :group 'pearl-paren-style)
+
+(defvar-local pearl-paren-style--annotation-overlays nil
+  "List of overlays used for annotation display.")
+
+(defvar-local pearl-paren-style--annotation-enabled nil
+  "Non-nil if annotation is currently enabled.")
+
+(defvar-local pearl-paren-style--annotation-debounce-timer nil
+  "Debounce timer for annotation updates.")
+
+(defun pearl-paren-style--in-string-or-comment-p (&optional pos)
+  "Return non-nil if point is inside a string or comment.
+If POS is provided, check at that position instead of current point."
+  (save-excursion
+    (when pos (goto-char pos))
+    (let ((state (syntax-ppss)))
+      (or (nth 3 state)    ; inside string
+          (nth 4 state)    ; inside comment
+          ;; Check for character literal starting with ?\
+          (save-excursion
+            (and (>= (point) 2)
+                 (eq (char-before) ?\\)
+                 (eq (char-before (1- (point))) ??)))
+          ;; Check for multi-line comment #| ... |#
+          (save-excursion
+            (let ((pos (point)))
+              (when (re-search-backward "#|" nil t)
+                (let ((start (point)))
+                  (goto-char start)
+                  (when (re-search-forward "|#" nil t)
+                    (<= pos (point)))))))))))
 
 (defun pearl-paren-style--line-has-comment-p ()
   "Return non-nil if current line has a comment (starting with ;)."
@@ -86,6 +120,169 @@
 OPEN-POS is the position of the opening parenthesis.
 CLOSING-POS is the position of the closing parenthesis."
   (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos)))
+
+(defun pearl-paren-style--get-annotation (closing-pos)
+  "Get annotation for closing parenthesis at CLOSING-POS.
+Returns annotation string or nil if no annotation needed."
+  (save-excursion
+    (goto-char closing-pos)
+    (let ((open-pos (condition-case nil
+                       ;; Use scan-lists with depth 1 to find matching opening parenthesis
+                       (scan-lists (point) -1 1)
+                     (scan-error nil))))
+      (when open-pos
+        (let ((open-line (line-number-at-pos open-pos))
+              (close-line (line-number-at-pos closing-pos)))
+          (when (/= open-line close-line)
+            (let ((open-col (save-excursion
+                              (goto-char open-pos)
+                              (current-column)))
+                  (open-text (save-excursion
+                               (goto-char open-pos)
+                               (buffer-substring
+                                (point)
+                                (min (line-end-position)
+                                     (+ (point) 20))))))
+              (format " ← %d:%d %s" open-line open-col open-text))))))))
+
+(defun pearl-paren-style--create-annotation-overlay (closing-pos)
+  "Create annotation overlay for closing parenthesis at CLOSING-POS.
+Returns the overlay or nil if no annotation needed."
+  (when (and pearl-paren-style--annotation-enabled
+             (not (pearl-paren-style--in-string-or-comment-p closing-pos)))
+    (let ((annotation (pearl-paren-style--get-annotation closing-pos)))
+      (when annotation
+        (let ((ov (make-overlay closing-pos (1+ closing-pos))))
+          (overlay-put ov 'category 'pearl-paren-style-annotation)
+          (overlay-put ov 'after-string annotation)
+          (overlay-put ov 'pearl-paren-style-closing-pos closing-pos)
+          ov)))))
+
+(defun pearl-paren-style--clear-annotations ()
+  "Remove all annotation overlays."
+  (mapc 'delete-overlay pearl-paren-style--annotation-overlays)
+  (setq pearl-paren-style--annotation-overlays nil))
+
+(defun pearl-paren-style--update-annotations-full ()
+  "Create annotations for all closing parentheses in buffer."
+  (pearl-paren-style--clear-annotations)
+  (when pearl-paren-style--annotation-enabled
+    (save-excursion
+      (goto-char (point-max))
+      (while (search-backward ")" nil t)
+        (unless (pearl-paren-style--in-string-or-comment-p)
+          (let ((ov (pearl-paren-style--create-annotation-overlay (point))))
+            (when ov
+              (push ov pearl-paren-style--annotation-overlays))))))))
+
+(defun pearl-paren-style--update-annotations-incremental (beg end)
+  "Update annotations incrementally in region BEG to END."
+  (when pearl-paren-style--annotation-enabled
+    ;; 1. Check if modification affects opening parenthesis positions
+    (let ((affected-overlays nil))
+
+      ;; Check all overlays, update if their corresponding opening parenthesis is in modified region
+      (dolist (ov pearl-paren-style--annotation-overlays)
+        (let ((closing-pos (overlay-start ov)))
+          (unless (pearl-paren-style--in-string-or-comment-p closing-pos)
+            (save-excursion
+              (goto-char closing-pos)
+              (let ((open-pos (condition-case nil
+                                 (scan-lists (point) -1 1)
+                               (scan-error nil))))
+                (when (and open-pos
+                           (or (<= beg open-pos end) ; Opening parenthesis in modified region
+                               (<= beg closing-pos end) ; Closing parenthesis in modified region
+                               ))
+                  (push ov affected-overlays)))))))
+
+      ;; 2. Update affected overlays
+      (dolist (ov affected-overlays)
+        (let ((closing-pos (overlay-start ov)))
+          (unless (pearl-paren-style--in-string-or-comment-p closing-pos)
+            (let ((annotation (pearl-paren-style--get-annotation closing-pos)))
+              (if annotation
+                  (overlay-put ov 'after-string annotation)
+                ;; If no annotation, delete overlay
+                (delete-overlay ov)
+                (setq pearl-paren-style--annotation-overlays
+                      (delq ov pearl-paren-style--annotation-overlays)))))))
+
+    ;; 3. Rescan affected region for new overlays
+    (save-excursion
+      (let ((scan-end (min (point-max) (+ end 200)))
+            (scan-beg (max (point-min) (- beg 200))))
+        (goto-char scan-end)
+        (while (re-search-backward ")" scan-beg t)
+          (let ((pos (point)))
+            (unless (or (pearl-paren-style--in-string-or-comment-p)
+                        (cl-some (lambda (ov)
+                                   (= (overlay-start ov) pos))
+                                 pearl-paren-style--annotation-overlays))
+              (let ((ov (pearl-paren-style--create-annotation-overlay pos)))
+                (when ov
+                  (push ov pearl-paren-style--annotation-overlays)))))))))))
+
+(defun pearl-paren-style--schedule-debounced-update (beg end)
+  "Schedule annotation update with debounce for region BEG to END."
+  (when pearl-paren-style--annotation-debounce-timer
+    (cancel-timer pearl-paren-style--annotation-debounce-timer))
+  (setq pearl-paren-style--annotation-debounce-timer
+        (run-with-timer pearl-paren-style-annotation-delay nil
+                         #'pearl-paren-style--debounced-update beg end)))
+
+(defun pearl-paren-style--debounced-update (beg end)
+  "Debounced annotation update for region BEG to END."
+  (setq pearl-paren-style--annotation-debounce-timer nil)
+  (when (and pearl-paren-style--annotation-enabled
+             (get-buffer-window (current-buffer)))
+    (pearl-paren-style--update-annotations-incremental beg end)))
+
+(defun pearl-paren-style--after-change (beg end _len)
+  "Handle buffer changes to update annotations."
+  (when pearl-paren-style--annotation-enabled
+    ;; Check if change might affect annotations
+    (save-excursion
+      (let ((region-changed nil))
+        ;; Check the changed region for parentheses
+        (goto-char (max (point-min) (- beg 1))) ; Check one char before beg
+        (when (re-search-forward "[()]" (min (point-max) (+ end 1)) t)
+          (setq region-changed t))
+
+        ;; Also check if line numbers changed (affects annotation line numbers)
+        (unless region-changed
+          (goto-char beg)
+          (beginning-of-line)
+          (when (re-search-forward "\n" end t)
+            (setq region-changed t)))
+
+        (when region-changed
+          (pearl-paren-style--schedule-debounced-update
+           (max (point-min) (- beg 100)) ; Expand region for safety
+           (min (point-max) (+ end 100))))))))
+
+(defun pearl-paren-style--setup-change-hook ()
+  "Setup change hook for annotation updates."
+  (add-hook 'after-change-functions #'pearl-paren-style--after-change nil t))
+
+(defun pearl-paren-style--teardown-change-hook ()
+  "Remove change hook."
+  (remove-hook 'after-change-functions #'pearl-paren-style--after-change t))
+
+(defun pearl-paren-style--enable-annotations ()
+  "Enable annotations for current buffer."
+  (setq pearl-paren-style--annotation-enabled t)
+  (pearl-paren-style--setup-change-hook)
+  (pearl-paren-style--update-annotations-full))
+
+(defun pearl-paren-style--disable-annotations ()
+  "Disable annotations for current buffer."
+  (setq pearl-paren-style--annotation-enabled nil)
+  (when pearl-paren-style--annotation-debounce-timer
+    (cancel-timer pearl-paren-style--annotation-debounce-timer)
+    (setq pearl-paren-style--annotation-debounce-timer nil))
+  (pearl-paren-style--teardown-change-hook)
+  (pearl-paren-style--clear-annotations))
 
 (defun pearl-paren-style--dangle-target-indent (open-pos)
   "Calculate target indentation column for OPEN-POS.
@@ -227,6 +424,7 @@ CLOSING-POS is the position of the closing parenthesis."
 (defun pearl-paren-style--to-dangling ()
   "Convert buffer to dangling style.
 Single-line parens like (foo) remain unchanged."
+  (pearl-paren-style--disable-annotations) ; Clear any existing state
   (save-excursion
     (goto-char (point-max))
     (while (search-backward ")" nil t)
@@ -249,7 +447,11 @@ Single-line parens like (foo) remain unchanged."
                   (pearl-paren-style--dangle-fix-indent line-start target-col))
                  ;; Not at line start: move to new line
                  (t
-                  (pearl-paren-style--dangle-move-to-new-line open-pos closing-pos target-col)))))))))))
+                  (pearl-paren-style--dangle-move-to-new-line open-pos closing-pos target-col))))))))))
+  (when pearl-paren-style-show-annotations
+    (pearl-paren-style--enable-annotations))
+  (message "Converted to dangling style%s"
+           (if pearl-paren-style-show-annotations " with annotations" "")))
 
 (defun pearl-paren-style--is-dangling-p (closing-pos)
   "Return t if the paren at CLOSING-POS is dangling (on its own line).
@@ -341,6 +543,7 @@ CLOSING-POS is the position of the closing parenthesis."
 
 (defun pearl-paren-style--to-compact ()
   "Convert buffer to compact style."
+  (pearl-paren-style--disable-annotations)
   (save-excursion
     (goto-char (point-max))
     (let ((changed t))
@@ -359,7 +562,8 @@ CLOSING-POS is the position of the closing parenthesis."
                   (setq changed t))))))
         (when changed
           (goto-char (point-max)))))
-    (pearl-paren-style--cleanup-trailing-blank-lines)))
+    (pearl-paren-style--cleanup-trailing-blank-lines))
+  (message "Converted to compact style"))
 
 (defun pearl-paren-style--process-file (file style)
   "Process FILE converting to STYLE.
@@ -460,10 +664,13 @@ FILES is a list of file paths."
 Particularly recommended for:
 - AI code generation sessions
 - SEARCH/REPLACE operations (Aider/Copilot)
-- Major refactoring operations"
+- Major refactoring operations
+
+When `pearl-paren-style-show-annotations' is non-nil, closing
+parentheses will display annotations showing the corresponding
+opening parenthesis location."
   (interactive)
-  (pearl-paren-style--to-dangling)
-  (message "Converted to dangling style"))
+  (pearl-paren-style--to-dangling))
 
 ;;;###autoload
 (defun pearl-paren-style-convert (style)

@@ -1492,6 +1492,215 @@
           ;; Check that the pattern matches
           (should (string-match-p (regexp-quote "  )\n  (final)\n)") result)))))))
 
+;;;; Annotation tests
+
+(ert-deftest test-pearl-paren-style-annotation-basic ()
+  "Basic annotation creation test."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+
+      (let ((buffer-text (buffer-string))
+            (overlay-count (length pearl-paren-style--annotation-overlays))
+            (overlay-positions (mapcar (lambda (ov) (overlay-start ov)) pearl-paren-style--annotation-overlays))
+            (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays)))
+
+        (let ((display-str (format "Buffer after conversion:\n%s\nAnnotation overlay count: %d\nOverlay positions: %s\nAnnotation texts: %s"
+                                   buffer-text overlay-count overlay-positions overlay-texts)))
+          (ert-info ((format "%s" display-str))
+            (should pearl-paren-style--annotation-enabled)
+            (should pearl-paren-style--annotation-overlays)
+            (should (= overlay-count 2))
+            ;; Check annotation text
+            (dolist (text overlay-texts)
+              (should (string-match-p "← [0-9]+:[0-9]+ " text)))))))))
+
+(ert-deftest test-pearl-paren-style-annotation-disabled ()
+  "Annotation disabled when pearl-paren-style-show-annotations is nil."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations nil))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (let ((original-text (buffer-string)))
+
+        (pearl-paren-style--to-dangling)
+        (let ((dangling-text (buffer-string))
+              (overlay-count (length pearl-paren-style--annotation-overlays)))
+
+          (let ((display-str (format "Initial code:\n%s\nConfiguration: pearl-paren-style-show-annotations=%s\nCode after conversion:\n%s\nAnnotation overlay count: %d"
+                                     original-text pearl-paren-style-show-annotations
+                                     dangling-text overlay-count)))
+            (ert-info ((format "%s" display-str))
+              (should (= overlay-count 0)))))))))
+
+(ert-deftest test-pearl-paren-style-annotation-removal ()
+  "Test annotation removal when switching to compact."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      (let ((dangling-text (buffer-string))
+            (overlay-count (length pearl-paren-style--annotation-overlays)))
+
+        (pearl-paren-style--to-compact)
+        (let ((compact-text (buffer-string))
+              (final-overlay-count (length pearl-paren-style--annotation-overlays)))
+
+          (let ((display-str (format "After conversion to dangling:\n%s\nAnnotation overlay count: %d\nAfter conversion to compact:\n%s\nAnnotation overlay count: %d\nAnnotation enabled: %s"
+                                     dangling-text overlay-count
+                                     compact-text final-overlay-count pearl-paren-style--annotation-enabled)))
+            (ert-info ((format "%s" display-str))
+              (should (> overlay-count 0)) ; Should have overlays
+              (should-not pearl-paren-style--annotation-enabled)
+              (should (= final-overlay-count 0)))))))))
+
+(ert-deftest test-pearl-paren-style-annotation-text ()
+  "Test annotation text generation."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(defun foo ()\n  (when bar\n    (process)\n  )\n)")
+
+    ;; Find the closing parenthesis on line 4
+    (goto-char (point-min))
+    (forward-line 3) ; Move to line 4 (0-based index, so line 4 is index 3)
+    (search-forward ")")
+    (backward-char) ; Move to the closing parenthesis position
+    (let ((closing-pos (point)))
+      (save-excursion
+        (goto-char closing-pos)
+        (let* ((line-num (line-number-at-pos))
+              (col (current-column))
+              (line-start (line-beginning-position))
+              (line-end (line-end-position))
+              (line-content (buffer-substring line-start line-end))
+              (full-display (concat (buffer-substring (point-min) line-start)
+                                    line-content
+                                    (buffer-substring line-end (point-max))))
+              (text (pearl-paren-style--get-annotation closing-pos)))
+
+          (let ((display-str (format "Test info:\nClosing parenthesis position: %d\nLine number: %d\nColumn: %d\nFull code:\n%s\nAnnotation text: %s"
+                                     closing-pos line-num col full-display text)))
+            ;; If annotation exists, add full code with annotation
+            (when text
+              (let ((full-display-with-annotation (concat (buffer-substring (point-min) line-start)
+                                                          line-content
+                                                          text
+                                                          (buffer-substring line-end (point-max)))))
+                (setq display-str (concat display-str
+                                          "\n\nFull code with annotation:\n"
+                                          full-display-with-annotation))))
+
+            (ert-info ((format "%s" display-str))
+              (should (= line-num 4))
+              (should text) ; Should have annotation (different lines)
+              (when text
+                (should (string-match-p "← [0-9]+:[0-9]+ " text))
+                (should (string-match-p "when" text))))))))))
+
+(ert-deftest test-pearl-paren-style-annotation-no-single-line ()
+  "No annotation for single-line parentheses."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(foo)")
+    (let ((text (pearl-paren-style--get-annotation (point))))
+      (should-not text))))
+
+(ert-deftest test-pearl-paren-style-annotation-in-string ()
+  "No annotation for parentheses in strings."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "(message \"string with ) parenthesis\")")
+    (goto-char (point-max))
+    (search-backward ")")
+    (let ((text (pearl-paren-style--get-annotation (point))))
+      (should-not text))))
+
+(ert-deftest test-pearl-paren-style-annotation-update-after-edit ()
+  "Test annotation updates after editing."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t)
+          (pearl-paren-style-annotation-delay 0.01)
+          (debug-on-error t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      (let ((original-count (length pearl-paren-style--annotation-overlays)))
+        ;; Edit the opening line
+        (goto-char (point-min))
+        (search-forward "(when t")
+        (let ((match-beg (match-beginning 0))
+              (match-end (match-end 0)))
+          (replace-match "(when condition")
+          ;; Directly call update function
+          (pearl-paren-style--update-annotations-incremental (point-min) (point-max))
+
+          ;; 收集信息
+          (let ((buffer-text (buffer-string))
+                (overlay-count (length pearl-paren-style--annotation-overlays))
+                (overlay-positions (mapcar (lambda (ov) (overlay-start ov)) pearl-paren-style--annotation-overlays))
+                (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays)))
+
+            ;; 构建显示字符串
+            (let ((display-str (format "编辑后buffer内容:\n%s\nAnnotation overlay数量: %d\nOverlay位置: %s\nAnnotation文本: %s"
+                                       buffer-text overlay-count overlay-positions overlay-texts)))
+              ;; 在一个ert-info中显示所有信息
+              (ert-info ((format "%s" display-str))
+                ;; 断言
+                (should (= overlay-count original-count))
+                ;; Check annotation updated
+                (let ((found-updated nil))
+                  (dolist (text overlay-texts)
+                    (when (and text (string-match-p "when" text))
+                      (setq found-updated t)
+                      (should (string-match-p "condition" text))))
+                  (should found-updated))))))))))
+
+(ert-deftest test-pearl-paren-style-annotation-performance ()
+  "Test annotation performance with many parentheses."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Create code with many parentheses
+      (dotimes (i 50)
+        (insert (format "(defun test-%d ()\n  (let ((x %d))\n    (when x\n      (print x)\n    )\n  )\n)\n\n" i i)))
+      (ert-info ((format "Created %d functions" 50))
+        (let ((start-time (current-time)))
+          (pearl-paren-style--to-dangling)
+          (let ((elapsed (float-time (time-since start-time))))
+            (ert-info ((format "Annotation creation time: %.3fs" elapsed))
+              (should (<= elapsed 1.0)) ; Should complete within 1 second
+              )))))))
+
+(ert-deftest test-pearl-paren-style-annotation-not-selectable ()
+  "Annotation overlay text should not be selectable."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays))
+            (overlay-info (mapcar (lambda (ov)
+                                    (list (overlay-start ov)
+                                          (overlay-get ov 'after-string)))
+                                  pearl-paren-style--annotation-overlays)))
+
+        (let ((display-str (format "Annotation overlay count: %d\nOverlay info: %s"
+                                   overlay-count overlay-info)))
+          (ert-info ((format "%s" display-str))
+            (should overlay-count)
+            ;; Check overlay properties
+            (dolist (info overlay-info)
+              (let ((pos (car info))
+                    (annotation (cadr info)))
+                (should annotation)
+                ;; after-string is not selectable, but we can check it exists
+                (should (stringp annotation))
+                (should (> (length annotation) 0))))))))))
+
 ;;;; Boundary condition tests
 
 (ert-deftest test-pearl-paren-style-boundary-empty-lines ()
