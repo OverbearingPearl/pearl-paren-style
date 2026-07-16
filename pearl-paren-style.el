@@ -85,10 +85,7 @@
   "Return t if the paren at CLOSING-POS should be dangled relative to OPEN-POS.
 OPEN-POS is the position of the opening parenthesis.
 CLOSING-POS is the position of the closing parenthesis."
-  (and (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos))
-       (save-excursion
-         (goto-char open-pos)
-         (not (eq (char-before) ?\))))))
+  (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos)))
 
 (defun pearl-paren-style--dangle-target-indent (open-pos)
   "Calculate target indentation column for OPEN-POS.
@@ -222,9 +219,7 @@ CLOSING-POS is the position of the closing parenthesis."
               (pcase style
                 ('dangling (cl-incf dangling))
                 ('compact (cl-incf compact)))))))
-      (cond ((> dangling compact) 'dangling)
-            ((> compact dangling) 'compact)
-            ((> dangling 0) 'dangling)
+      (cond ((> dangling 0) 'dangling)
             ((> compact 0) 'compact)
             (has-parens 'compact)
             (t nil)))))
@@ -265,8 +260,10 @@ CLOSING-POS is the position of the closing parenthesis."
     (and open-pos
          (/= (line-number-at-pos open-pos) (line-number-at-pos closing-pos))
          (save-excursion
-           (goto-char open-pos)
-           (not (looking-back ")" (1- (point))))))))
+           (goto-char closing-pos)
+           (beginning-of-line)
+           (skip-chars-forward " \t")
+           (= (point) closing-pos)))))
 
 (defun pearl-paren-style--prev-line-has-comment-p (line-start)
   "Return t if the line before LINE-START has a comment.

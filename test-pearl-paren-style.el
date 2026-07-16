@@ -119,6 +119,78 @@
           ;; According to code logic: (> dangling 0) 'dangling when equal
           (should (eq detected 'dangling)))))))
 
+(ert-deftest test-pearl-paren-style-detect-mixed-with-many-compact ()
+  "Detection should return 'dangling when any dangling exists, even with many compact."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    ;; Create mixed content: 1 dangling + many compact parentheses
+    (let ((content "(foo\n  (bar)\n)\n;; Add many compact-style test code\n(defun test1 ()\n  (list 1 2 3))\n(defun test2 ()\n  (let ((x 1))\n    (foo)))\n(defun test3 ()\n  (progn\n    (a)\n    (b)))\n"))
+      (insert content)
+      ;; Add more compact code to increase compact count
+      (dotimes (i 10)
+        (insert (format "(defun extra-%d ()\n  (list %d %d %d))\n" i i (+ i 1) (+ i 2))))
+      (let ((detected (pearl-paren-style--detect)))
+        (ert-info ((format "Content starts with dangling but has many compact\nDetected: %s\nExpected: 'dangling" detected))
+          ;; New logic: return 'dangling if any dangling exists
+          (should (eq detected 'dangling)))))))
+
+(ert-deftest test-pearl-paren-style-detect-priority ()
+  "Test detection priority: dangling vs compact counts."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    ;; Scenario 1: 1 dangling, 100 compact
+    (insert "(foo\n  (bar)\n)\n")
+    (dotimes (i 100)
+      (insert (format "(compact-%d)\n" i)))
+    (let ((detected (pearl-paren-style--detect)))
+      (ert-info ((format "1 dangling, 100 compact\nDetected: %s" detected))
+        ;; New logic: return 'dangling if any dangling exists
+        (should (eq detected 'dangling))))
+
+    ;; Scenario 2: 0 dangling, 100 compact
+    (erase-buffer)
+    (dotimes (i 100)
+      (insert (format "(compact-%d)\n" i)))
+    (let ((detected (pearl-paren-style--detect)))
+      (ert-info ((format "0 dangling, 100 compact\nDetected: %s" detected))
+        (should (eq detected 'compact))))
+
+    ;; Scenario 3: 100 dangling, 100 compact
+    (erase-buffer)
+    (dotimes (i 100)
+      (insert (format "(dangling-%d\n  (inner)\n)\n" i)))
+    (dotimes (i 100)
+      (insert (format "(compact-%d)\n" i)))
+    (let ((detected (pearl-paren-style--detect)))
+      (ert-info ((format "100 dangling, 100 compact\nDetected: %s" detected))
+        ;; When equal, new logic (> dangling 0) returns 'dangling
+        (should (eq detected 'dangling))))))
+
+(ert-deftest test-pearl-paren-style-toggle-with-mixed-content ()
+  "Toggle should work correctly even with mixed dangling/compact content."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    ;; Create content similar to test-pearl-paren-style.el file structure
+    ;; 1. A dangling-style expression
+    (insert "(foo\n  (bar)\n)\n")
+    ;; 2. Many compact-style test code (simulating test file)
+    (insert ";; Test 1: compact style\n")
+    (insert "(ert-deftest test1 ()\n  (should (eq 1 1)))\n")
+    (insert ";; Test 2: more compact\n")
+    (insert "(ert-deftest test2 ()\n  (with-temp-buffer\n    (insert \"(a (b))\")\n    (should (pearl-paren-style--detect))))\n")
+    ;; 3. Record initial state
+    (let ((original (buffer-string))
+          (initial-detect (pearl-paren-style--detect)))
+      ;; 4. Execute toggle (should switch to compact)
+      (pearl-paren-style-toggle)
+      (let ((after-toggle (buffer-string))
+            (detected-after (pearl-paren-style--detect)))
+        (ert-info ((format "Initial detect: %s\nAfter toggle detect: %s" initial-detect detected-after))
+          ;; Key assertion: after toggle should detect as compact
+          (should (eq detected-after 'compact))
+          ;; Verify content actually changed (dangling->compact)
+          (should-not (string= after-toggle original)))))))
+
 ;;;; Toggle tests
 
 (ert-deftest test-pearl-paren-style-toggle-compact-to-dangling ()
@@ -158,12 +230,13 @@
       (insert original)
       (pearl-paren-style-toggle)
       (let ((after-first (buffer-string)))
-        (pearl-paren-style-toggle)
-        (let ((result (buffer-string))
-              (detected (pearl-paren-style--detect)))
-          (ert-info ((format "Original:\n%s\nAfter first toggle:\n%s\nAfter second toggle:\n%s\nDetected: %s\nExpected: %s"
-                              original after-first result detected expected-style))
-            (should (eq detected expected-style))))))))
+        (let ((detected-after-first (pearl-paren-style--detect)))
+          (pearl-paren-style-toggle)
+          (let ((result (buffer-string))
+                (detected (pearl-paren-style--detect)))
+            (ert-info ((format "Original:\n%s\nAfter first toggle:\n%s\nAfter second toggle:\n%s\nDetected: %s\nExpected: %s"
+                                original after-first result detected expected-style))
+              (should (eq detected expected-style)))))))))
 
 (ert-deftest test-pearl-paren-style-toggle-no-extra-blank-lines ()
   "Toggle does not create extra blank lines (dangling to compact)."
