@@ -2352,5 +2352,52 @@
             ;; No double-space at end of annotation text (before EOL)
             (should-not (string-match-p ";; ← .*  $" line))))))))
 
+(ert-deftest test-pearl-paren-style-annotation-no-accumulation ()
+  "Annotations do not accumulate across multiple toggle cycles."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")))\n")
+      ;; Cycle 1
+      (pearl-paren-style--to-dangling)
+      (let ((count1 (length pearl-paren-style--annotation-overlays)))
+        ;; Cycle 2
+        (pearl-paren-style--to-compact)
+        (pearl-paren-style--to-dangling)
+        (let ((count2 (length pearl-paren-style--annotation-overlays)))
+          ;; Cycle 3
+          (pearl-paren-style--to-compact)
+          (pearl-paren-style--to-dangling)
+          (let ((count3 (length pearl-paren-style--annotation-overlays)))
+            (ert-info ((format "Count after cycle 1: %d, cycle 2: %d, cycle 3: %d"
+                                count1 count2 count3))
+              (should (= count1 count2))
+              (should (= count2 count3)))))))))
+
+(ert-deftest test-pearl-paren-style-annotation-clear-on-revert ()
+  "Annotations are cleared after buffer revert (overlays collapse to point-min)."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      (insert "(defun test ()\n  (when t\n    (print \"hello\"))\n)\n")
+      (pearl-paren-style--to-dangling)
+      (should (> (length pearl-paren-style--annotation-overlays) 0))
+      ;; Simulate real revert-buffer behavior:
+      ;; overlays are NOT deleted, but buffer content is replaced,
+      ;; causing overlay positions to collapse to point-min.
+      ;; We simulate this by moving all overlays to point-min manually.
+      (dolist (ov pearl-paren-style--annotation-overlays)
+        (move-overlay ov (point-min) (point-min)))
+      ;; Now fire the after-revert-hook as revert-buffer would
+      (run-hooks 'after-revert-hook)
+      ;; Verify all overlays are gone
+      (should (null pearl-paren-style--annotation-overlays))
+      (let ((remaining (cl-count-if
+                        (lambda (ov)
+                          (eq (overlay-get ov 'category) 'pearl-paren-style-annotation))
+                        (overlays-in (point-min) (point-max)))))
+        (ert-info ((format "Remaining annotation overlays after revert: %d" remaining))
+          (should (= remaining 0)))))))
+
 (provide 'test-pearl-paren-style)
 ;;; test-pearl-paren-style.el ends here

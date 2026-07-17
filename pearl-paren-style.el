@@ -280,7 +280,13 @@ Returns the overlay or nil if no annotation needed."
 (defun pearl-paren-style--clear-annotations ()
   "Remove all annotation overlays."
   (mapc 'delete-overlay pearl-paren-style--annotation-overlays)
-  (setq pearl-paren-style--annotation-overlays nil))
+  (setq pearl-paren-style--annotation-overlays nil)
+  (remove-overlays (point-min) (point-max) 'category 'pearl-paren-style-annotation))
+
+(defun pearl-paren-style--on-after-revert ()
+  "Clear stale annotation overlays after buffer revert."
+  (pearl-paren-style--clear-annotations))
+
 
 (defun pearl-paren-style--update-annotations-full ()
   "Create annotations for all closing parentheses in buffer."
@@ -433,6 +439,7 @@ CLOSING-POS is the position of the closing parenthesis."
   "Convert buffer to dangling style.
 Single-line parens like (foo) remain unchanged."
   (pearl-paren-style--clear-annotations) ; Clear any existing state
+  (add-hook 'after-revert-hook #'pearl-paren-style--on-after-revert nil t)
   (save-excursion
     (goto-char (point-max))
     (while (search-backward ")" nil t)
@@ -549,6 +556,7 @@ CLOSING-POS is the position of the closing parenthesis."
 (defun pearl-paren-style--to-compact ()
   "Convert buffer to compact style."
   (pearl-paren-style--clear-annotations)
+  (remove-hook 'after-revert-hook #'pearl-paren-style--on-after-revert t)
   (save-excursion
     (goto-char (point-max))
     (let ((changed t))
