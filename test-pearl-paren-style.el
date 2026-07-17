@@ -16,96 +16,160 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar))")
-          (expected-style 'compact))
+          (expected-style 'compact)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected: %s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-dangling ()
   "Detect dangling style: closing parenthesis on its own line."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo (bar)\n  )")
-          (expected-style 'dangling))
+          (expected-style 'dangling)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected: %s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-multiple-dangling ()
   "Detect dangling style with multiple dangling parentheses."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar\n    )\n  )")
-          (expected-style 'dangling))
+          (expected-style 'dangling)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected: %s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-single-line-multiple-forms ()
   "Detect compact style for single-line multiple forms."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo (bar) (baz))")
-          (expected-style 'compact))
+          (expected-style 'compact)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected: %s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-ignores-multiline-comment ()
   "Detection ignores parentheses inside multi-line comments."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "#| (ignored\n  (parens)) |#\n(foo\n  (bar))")
-          (expected-style 'compact))
+          (expected-style 'compact)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected: %s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-empty-buffer ()
   "Detection in empty buffer returns nil."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "")
-          (expected-style nil))
+          (expected-style nil)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original: '%s'\nDetected: %s\nExpected:\n%s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-comments-only ()
   "Detection in comment-only buffer returns nil."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original ";; just a comment\n;; another comment")
-          (expected-style nil))
+          (expected-style nil)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected:\n%s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-mixed-style ()
   "Detection prefers dangling style when any dangling parenthesis exists."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar)))\n(baz\n  (qux)\n)")
-          (expected-style 'dangling))
+          (expected-style 'dangling)
+         )
       (insert original)
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s\nExpected:\n%s"
-                            original detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-chooses-dangling-when-equal ()
   "Detection chooses dangling style when compact/dangling counts are equal."
@@ -117,7 +181,12 @@
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Original:\n%s\nDetected: %s" original detected))
           ;; According to code logic: (> dangling 0) 'dangling when equal
-          (should (eq detected 'dangling)))))))
+          (should (eq detected 'dangling))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-mixed-with-many-compact ()
   "Detection should return 'dangling when any dangling exists, even with many compact."
@@ -128,11 +197,17 @@
       (insert content)
       ;; Add more compact code to increase compact count
       (dotimes (i 10)
-        (insert (format "(defun extra-%d ()\n  (list %d %d %d))\n" i i (+ i 1) (+ i 2))))
+        (insert (format "(defun extra-%d ()\n  (list %d %d %d))\n" i i (+ i 1) (+ i 2)))
+      )
       (let ((detected (pearl-paren-style--detect)))
         (ert-info ((format "Content starts with dangling but has many compact\nDetected: %s\nExpected: 'dangling" detected))
           ;; New logic: return 'dangling if any dangling exists
-          (should (eq detected 'dangling)))))))
+          (should (eq detected 'dangling))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-detect-priority ()
   "Test detection priority: dangling vs compact counts."
@@ -141,30 +216,42 @@
     ;; Scenario 1: 1 dangling, 100 compact
     (insert "(foo\n  (bar)\n)\n")
     (dotimes (i 100)
-      (insert (format "(compact-%d)\n" i)))
+      (insert (format "(compact-%d)\n" i))
+    )
     (let ((detected (pearl-paren-style--detect)))
       (ert-info ((format "1 dangling, 100 compact\nDetected: %s" detected))
         ;; New logic: return 'dangling if any dangling exists
-        (should (eq detected 'dangling))))
+        (should (eq detected 'dangling))
+      )
+    )
 
     ;; Scenario 2: 0 dangling, 100 compact
     (erase-buffer)
     (dotimes (i 100)
-      (insert (format "(compact-%d)\n" i)))
+      (insert (format "(compact-%d)\n" i))
+    )
     (let ((detected (pearl-paren-style--detect)))
       (ert-info ((format "0 dangling, 100 compact\nDetected: %s" detected))
-        (should (eq detected 'compact))))
+        (should (eq detected 'compact))
+      )
+    )
 
     ;; Scenario 3: 100 dangling, 100 compact
     (erase-buffer)
     (dotimes (i 100)
-      (insert (format "(dangling-%d\n  (inner)\n)\n" i)))
+      (insert (format "(dangling-%d\n  (inner)\n)\n" i))
+    )
     (dotimes (i 100)
-      (insert (format "(compact-%d)\n" i)))
+      (insert (format "(compact-%d)\n" i))
+    )
     (let ((detected (pearl-paren-style--detect)))
       (ert-info ((format "100 dangling, 100 compact\nDetected: %s" detected))
         ;; When equal, new logic (> dangling 0) returns 'dangling
-        (should (eq detected 'dangling))))))
+        (should (eq detected 'dangling))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-toggle-with-mixed-content ()
   "Toggle should work correctly even with mixed dangling/compact content."
@@ -180,16 +267,23 @@
     (insert "(ert-deftest test2 ()\n  (with-temp-buffer\n    (insert \"(a (b))\")\n    (should (pearl-paren-style--detect))))\n")
     ;; 3. Record initial state
     (let ((original (buffer-string))
-          (initial-detect (pearl-paren-style--detect)))
+          (initial-detect (pearl-paren-style--detect))
+         )
       ;; 4. Execute toggle (should switch to compact)
       (pearl-paren-style-toggle)
       (let ((after-toggle (buffer-string))
-            (detected-after (pearl-paren-style--detect)))
+            (detected-after (pearl-paren-style--detect))
+           )
         (ert-info ((format "Initial detect: %s\nAfter toggle detect: %s" initial-detect detected-after))
           ;; Key assertion: after toggle should detect as compact
           (should (eq detected-after 'compact))
           ;; Verify content actually changed (dangling->compact)
-          (should-not (string= after-toggle original)))))))
+          (should-not (string= after-toggle original))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Toggle tests
 
@@ -198,52 +292,82 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(let ((x 1))\n  (foo))")
-          (expected-style 'dangling))
+          (expected-style 'dangling)
+         )
       (insert original)
       (pearl-paren-style-toggle)
       (let ((result (buffer-string))
-            (detected (pearl-paren-style--detect)))
+            (detected (pearl-paren-style--detect))
+           )
         (ert-info ((format "Original:\n%s\nResult:\n%s\nDetected: %s\nExpected: %s"
-                            original result detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original result detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-toggle-dangling-to-compact ()
   "Toggle conversion from dangling to compact style."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(let ((x 1)\n      )\n  (foo)\n  )")
-          (expected-style 'compact))
+          (expected-style 'compact)
+         )
       (insert original)
       (pearl-paren-style-toggle)
       (let ((result (buffer-string))
-            (detected (pearl-paren-style--detect)))
+            (detected (pearl-paren-style--detect))
+           )
         (ert-info ((format "Original:\n%s\nResult:\n%s\nDetected: %s\nExpected: %s"
-                            original result detected expected-style))
-          (should (eq detected expected-style)))))))
+                            original result detected expected-style
+                   )
+                  )
+          (should (eq detected expected-style))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-toggle-roundtrip ()
   "Double toggle returns to original compact style."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun example (x)\n  (+ x 1))")
-          (expected-style 'compact))
+          (expected-style 'compact)
+         )
       (insert original)
       (pearl-paren-style-toggle)
       (let ((after-first (buffer-string)))
         (let ((detected-after-first (pearl-paren-style--detect)))
           (pearl-paren-style-toggle)
           (let ((result (buffer-string))
-                (detected (pearl-paren-style--detect)))
+                (detected (pearl-paren-style--detect))
+               )
             (ert-info ((format "Original:\n%s\nAfter first toggle:\n%s\nAfter second toggle:\n%s\nDetected: %s\nExpected: %s"
-                                original after-first result detected expected-style))
-              (should (eq detected expected-style)))))))))
+                                original after-first result detected expected-style
+                       )
+                      )
+              (should (eq detected expected-style))
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-toggle-no-extra-blank-lines ()
   "Toggle does not create extra blank lines (dangling to compact)."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun outer ()\n  (let ((x 1))\n    (inner\n      (nested)\n    )\n  )\n)")
-          (expected-lines 6))
+          (expected-lines 6)
+         )
       (insert original)
       (pearl-paren-style-toggle)
       (let ((result (buffer-string)))
@@ -253,27 +377,44 @@
           ;; Check that line count is same as or less than original
           (let ((original-lines (with-temp-buffer
                                   (insert original)
-                                  (count-lines (point-min) (point-max))))
-                (result-lines (count-lines (point-min) (point-max))))
-            (should (<= result-lines original-lines)))
+                                  (count-lines (point-min) (point-max))
+                                )
+                )
+                (result-lines (count-lines (point-min) (point-max)))
+               )
+            (should (<= result-lines original-lines))
+          )
           ;; Check that the last line is not empty
           (goto-char (point-max))
           (forward-line -1)
-          (should-not (looking-at "^\\s-*$")))))))
+          (should-not (looking-at "^\\s-*$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-toggle-preserves-comment-spacing ()
   "Toggle preserves spacing before trailing comments."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun example ()\n  (do-something))  ; two spaces before comment\n")
-          (expected "(defun example ()\n  (do-something))  ; two spaces before comment\n"))
+          (expected "(defun example ()\n  (do-something))  ; two spaces before comment\n")
+         )
       (insert original)
       (pearl-paren-style-toggle) ; to dangling
       (pearl-paren-style-toggle) ; back to compact
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Check balanced tests
 
@@ -282,14 +423,18 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(defun test ()\n  (list 1 2 3))")
-    (should (pearl-paren-style--check-balanced-p))))
+    (should (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-unbalanced-basic ()
   "Check unbalanced parentheses in basic code."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(defun test ()\n  (list 1 2 3)") ; missing closing paren
-    (should-not (pearl-paren-style--check-balanced-p))))
+    (should-not (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-region ()
   "Check balanced parentheses within region."
@@ -298,68 +443,92 @@
     (insert "(foo (bar))\n(unbalanced (code")
     (should (pearl-paren-style--check-balanced-p 1 13)) ; first line only
     (should-not (pearl-paren-style--check-balanced-p 14 (point-max))) ; second line
-    ))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-char-literals ()
   "Character literals do not affect parenthesis balance."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(list ?\\) ?\\( ?\\;)")
-    (should (pearl-paren-style--check-balanced-p))))
+    (should (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-string-parens ()
   "Parentheses inside strings are ignored for balance checking."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(message \"String with (parens)\")")
-    (should (pearl-paren-style--check-balanced-p))))
+    (should (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-comment-parens ()
   "Parentheses inside comments are ignored for balance checking."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(foo) ; comment with (parens)")
-    (should (pearl-paren-style--check-balanced-p))))
+    (should (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-multiline-comment ()
   "Multi-line comments are ignored for balance checking."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "#| (ignored\n  parens) |#\n(foo)")
-    (should (pearl-paren-style--check-balanced-p))))
+    (should (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-source-file ()
   "Check that actual source file has balanced parentheses."
   (let ((source-file (expand-file-name "pearl-paren-style.el"
                                        (file-name-directory
                                         (or (symbol-file 'pearl-paren-style-run-tests)
-                                            (symbol-file 'pearl-paren-style--check-balanced-p))))))
+                                            (symbol-file 'pearl-paren-style--check-balanced-p)
+                                        )
+                                       )
+                     )
+        )
+       )
     (when (file-exists-p source-file)
       (with-temp-buffer
         (emacs-lisp-mode)
         (insert-file-contents source-file)
-        (should (pearl-paren-style--check-balanced-p))))))
+        (should (pearl-paren-style--check-balanced-p))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-balanced-whole-buffer ()
   "Check balanced parentheses in whole buffer (nil arguments)."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(balanced (code))")
-    (should (pearl-paren-style--check-balanced-p))))
+    (should (pearl-paren-style--check-balanced-p))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-unbalanced-region ()
   "Check unbalanced parentheses within region."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(foo (bar)\n(unbalanced")
-    (should-not (pearl-paren-style--check-balanced-p 1 (point-max)))))
+    (should-not (pearl-paren-style--check-balanced-p 1 (point-max)))
+  )
+)
 
 (ert-deftest test-pearl-paren-style-check-empty-region ()
   "Check balanced parentheses in empty region (edge case)."
   (with-temp-buffer
     (emacs-lisp-mode)
     (insert "(foo (bar))")
-    (should (pearl-paren-style--check-balanced-p 1 1))))
+    (should (pearl-paren-style--check-balanced-p 1 1))
+  )
+)
 
 ;;;; Region tests
 
@@ -377,7 +546,10 @@
     (let ((result (buffer-string)))
       (should (string-match-p "(defun test ()" result))
       (should (string-match-p "  (let ((x 1))\n    (foo))" result))
-      (should (string-match-p ")" result)))))
+      (should (string-match-p ")" result))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-region-to-dangling ()
   "Convert selected region to dangling style."
@@ -391,7 +563,10 @@
     (activate-mark)
     (call-interactively 'pearl-paren-style-dangling-region)
     (let ((result (buffer-string)))
-      (should (string-match-p "(let ((x 1))\n  (foo)\n  (bar)\n)" result)))))
+      (should (string-match-p "(let ((x 1))\n  (foo)\n  (bar)\n)" result))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-region-toggle ()
   "Toggle style within selected region."
@@ -408,7 +583,11 @@
       (let ((result (buffer-string)))
         (should-not (string= result original))
         ;; Should have converted dangling to compact
-        (should (string-match-p "  (let ((x 1))\n    (foo))" result))))))
+        (should (string-match-p "  (let ((x 1))\n    (foo))" result))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-region-convert ()
   "Convert region with explicit style selection."
@@ -423,11 +602,18 @@
     ;; Test will mock the interactive prompt
     (cl-letf (((symbol-function 'completing-read)
                (lambda (_prompt _collection &optional _predicate _require-match _initial-input _hist _def _inherit-input-method)
-                 "compact")))
+                 "compact"
+               )
+              )
+             )
       ;; Call function directly, not call-interactively
       (pearl-paren-style-convert-region 'compact (region-beginning) (region-end))
       (let ((result (buffer-string)))
-        (should (string-match-p "  (let ((x 1))\n    (foo))" result))))))
+        (should (string-match-p "  (let ((x 1))\n    (foo))" result))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-region-precise-boundaries ()
   "Region conversion with precise boundary conditions."
@@ -442,7 +628,8 @@
     (forward-char 3)  ; End region in middle of "(deep)" line
     (activate-mark)
     (should-error (pearl-paren-style-compact-region (region-beginning) (region-end))
-                  :type 'user-error)  ; Should fail due to unbalanced region
+                  :type 'user-error
+    )  ; Should fail due to unbalanced region
 
     ;; Test region that starts and ends at exact paren positions
     (goto-char (point-min))
@@ -452,7 +639,8 @@
     (forward-char 1)  ; Include the closing paren
     (activate-mark)
     (let ((beg (region-beginning))
-          (end (region-end)))
+          (end (region-end))
+         )
       ;; Debug: print region content
       (ert-info ((format "Region content: '%s'\nBeg: %d, End: %d" (buffer-substring beg end) beg end))
         ;; This region should be balanced: (inner2\n    (deep))
@@ -474,15 +662,22 @@
                 (while (not (eobp))
                   (cond
                    ((pearl-paren-style--in-string-or-comment-p)
-                    (forward-char))
+                    (forward-char)
+                   )
                    ((= (char-after) ?\()
                     (cl-incf open-count)
-                    (forward-char))
+                    (forward-char)
+                   )
                    ((= (char-after) ?\))
                     (cl-incf close-count)
-                    (forward-char))
+                    (forward-char)
+                   )
                    (t
-                    (forward-char)))))
+                    (forward-char)
+                   )
+                  )
+                )
+              )
               ;; Debug: print counts
               (ert-info ((format "Open count: %d, Close count: %d" open-count close-count))
                 ;; The region actually has 2 opening parens and 1 closing paren
@@ -495,9 +690,17 @@
                 ;; Instead, let's just accept that this region is unbalanced
                 ;; and update the test expectation
                 (should (= open-count 2))
-                (should (= close-count 1)))))
+                (should (= close-count 1))
+              )
+            )
+          )
           ;; Now check with the function - should return nil because unbalanced
-          (should-not (pearl-paren-style--check-balanced-p beg end)))))))
+          (should-not (pearl-paren-style--check-balanced-p beg end))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Compact conversion tests
 
@@ -506,26 +709,37 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  ;; comment\n  )")
-          (expected "(foo\n  ;; comment\n )"))
+          (expected "(foo\n  ;; comment\n )")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
+                            original result expected
+                   )
+                  )
           (should (string-match-p ";; comment" result))
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-multi-level ()
   "Compact conversion for multi-level dangling parentheses with comment."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(outer\n  (middle\n    (inner\n      )\n    )  ; end comment\n  )\n)")
-          (expected "(outer\n  (middle\n    (inner)))  ; end comment\n"))
+          (expected "(outer\n  (middle\n    (inner)))  ; end comment\n")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
+                            original result expected
+                   )
+                  )
           (should (string-match-p "; end comment" result))
           ;; Check that comment is on the same line as closing parens
           (goto-char (point-min))
@@ -533,18 +747,31 @@
           (beginning-of-line)
           (let ((line (thing-at-point 'line)))
             (ert-info ((format "Line with comment: '%s'" line))
-              (should (string-match-p "; end comment" line)))
+              (should (string-match-p "; end comment" line))
+            )
             ;; Check that there are multiple ) on the line with comment
             (save-excursion
               (beginning-of-line)
               (let ((count 0)
-                    (line-end (line-end-position)))
+                    (line-end (line-end-position))
+                   )
                 (while (search-forward ")" line-end t)
                   (save-excursion
                     (backward-char)
                     (unless (pearl-paren-style--in-string-or-comment-p)
-                      (cl-incf count))))
-                (should (> count 1))))))))))
+                      (cl-incf count)
+                    )
+                  )
+                )
+                (should (> count 1))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-with-comment ()
   "Compact conversion handles ) in comment correctly."
@@ -558,85 +785,131 @@
           (should (string-match-p "; note: returns ')'" result))
           (goto-char (point-max))
           (search-backward ";")
-          (should (looking-at "; note: returns ')'")))))))
+          (should (looking-at "; note: returns ')'"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-consecutive-comments ()
   "Compact conversion does not merge ) into consecutive comment lines."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  ;; comment 1\n  ;; comment 2\n  ;; comment 3\n  )")
-          (expected "(foo\n  ;; comment 1\n  ;; comment 2\n  ;; comment 3\n )"))
+          (expected "(foo\n  ;; comment 1\n  ;; comment 2\n  ;; comment 3\n )")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
+                            original result expected
+                   )
+                  )
           (should (string-match-p ";; comment 1" result))
           (should (string-match-p ";; comment 2" result))
           (should (string-match-p ";; comment 3" result))
           ;; Should not merge ) with comment lines
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-comment-between-code ()
   "Compact conversion handles mixed code/comment lines before )."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar)\n  ;; comment\n  )")
-          (expected "(foo\n  (bar)\n  ;; comment\n  )"))
+          (expected "(foo\n  (bar)\n  ;; comment\n  )")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
+                            original result expected
+                   )
+                  )
           (should (string-match-p ";; comment" result))
           ;; Should NOT merge ) with (bar) line because there's a comment line between them
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-merges-paren-with-comment ()
   "Compact conversion merges ) line with trailing comment."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar\n    )\n  )  ; close foo\n")
-          (expected "(foo\n  (bar))  ; close foo\n"))
+          (expected "(foo\n  (bar))  ; close foo\n")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-some-commented ()
   "Compact conversion with mixed commented/uncommented ) lines."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n  )  ; close b\n)  ; close a\n")
-          (expected "(a\n  (b)  ; close b\n  )  ; close a\n"))
+          (expected "(a\n  (b)  ; close b\n  )  ; close a\n")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-deep-nested ()
   "Compact conversion for deep nested parentheses with comment."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n    (c\n      (d\n        (foo (bar))\n      )\n    )\n  )  ;; comment\n)")
-          (expected "(a\n  (b\n    (c\n      (d\n        (foo (bar)))))  ;; comment\n  )"))
+          (expected "(a\n  (b\n    (c\n      (d\n        (foo (bar)))))  ;; comment\n  )")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-deep-nesting ()
   "Compact conversion for very deep nesting."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n    (c\n      (d\n        (e\n          (f\n            (g\n              (h\n                (i\n                  (j\n                  )\n                )\n              )\n            )\n          )\n        )\n      )\n    )\n  )\n)")
-          (expected-lines 10))
+          (expected-lines 10)
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
@@ -644,23 +917,36 @@
           (should (= (count-lines (point-min) (point-max)) expected-lines))
           (goto-char (point-max))
           (skip-chars-backward " \t\n")
-          (should (eq (char-before) ?\))))))))
+          (should (eq (char-before) ?\)))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-deep-nesting-with-comments ()
   "Compact conversion for deep nesting with comments at each level."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n    (c\n      )\n    )  ; end c\n  )  ; end b\n)  ; end a\n")
-          (expected-compact "(a\n  (b\n    (c)))  ; end c\n)  ; end a\n"))
+          (expected-compact "(a\n  (b\n    (c)))  ; end c\n)  ; end a\n")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected-compact))
+                            original result expected-compact
+                   )
+                  )
           ;; The innermost comment should merge with its code line
           (should (string-match-p "; end c" result))
           ;; The outer comments should remain on their own lines
-          (should (string-match-p "; end a" result)))))))
+          (should (string-match-p "; end a" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-removes-blank-lines ()
   "Compact conversion removes blank lines from deleted parenthesis lines."
@@ -668,7 +954,8 @@
     (emacs-lisp-mode)
     ;; Use multi-level nested dangling code, which is the scenario most prone to blank lines
     (let ((original "(defun outer ()\n  (let ((x 1))\n    (middle\n      (inner\n        )\n      )\n    )\n  )")
-          (expected-lines 4))
+          (expected-lines 4)
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
@@ -677,7 +964,8 @@
           (goto-char (point-min))
           (while (not (eobp))
             (should-not (looking-at "^\\s-*$"))
-            (forward-line 1))
+            (forward-line 1)
+          )
           ;; Verify there are no consecutive newlines (i.e., no blank lines)
           (should-not (string-match-p "\n\n" result))
           ;; Verify the last line indeed ends with ) and has no newline or whitespace after it
@@ -685,20 +973,33 @@
           (skip-chars-backward " \t\n")
           (should (eq (char-before) ?\)))
           ;; Verify exact line count after compact
-          (should (= (count-lines (point-min) (point-max)) expected-lines)))))))
+          (should (= (count-lines (point-min) (point-max)) expected-lines))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-with-trailing-comment ()
   "Compact conversion correctly handles trailing comments (bug fix test)."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun example ()\n  (let ((data '(1 2 3)))\n    (process\n      (get-item data)  ; retrieve item\n    )\n  )\n)\n")
-          (expected "(defun example ()\n  (let ((data '(1 2 3)))\n    (process\n      (get-item data)  ; retrieve item\n      )))\n"))
+          (expected "(defun example ()\n  (let ((data '(1 2 3)))\n    (process\n      (get-item data)  ; retrieve item\n      )))\n")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Dangling conversion tests
 
@@ -714,7 +1015,12 @@
           (should (string-match-p "; end comment" result))
           (goto-char (point-max))
           (search-backward ";")
-          (should (looking-at "; end comment")))))))
+          (should (looking-at "; end comment"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-ignores-paren-in-comment ()
   "Dangling conversion ignores ) in comment."
@@ -728,46 +1034,75 @@
           (should (string-match-p "; note: function returns ')'" result))
           (goto-char (point-max))
           (search-backward ";")
-          (should (looking-at "; note: function returns ')'")))))))
+          (should (looking-at "; note: function returns ')'"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-multi-level ()
   "Dangling conversion with comments on multiple closing parenthesis lines."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(outer\n  (middle\n    (inner\n    )  ; close middle\n  )  ; close outer\n)")
-          (expected "(outer\n  (middle\n    (inner\n    )  ; close middle\n  )  ; close outer\n)"))
+          (expected "(outer\n  (middle\n    (inner\n    )  ; close middle\n  )  ; close outer\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-code-comment-separate ()
   "Dangling conversion: ) on separate line when previous line has code+comment."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar)  ; side effect\n)")
-          (expected "(foo\n  (bar)  ; side effect\n)"))
+          (expected "(foo\n  (bar)  ; side effect\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-deep-nested ()
   "Dangling conversion for deep nested parentheses with comment."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n    (c\n      (d\n        (foo (bar)))))  ;; comment\n)")
-          (expected "(a\n  (b\n    (c\n      (d\n        (foo (bar))\n      )\n    )\n  )  ;; comment\n)"))
+          (expected "(a\n  (b\n    (c\n      (d\n        (foo (bar))\n      )\n    )\n  )  ;; comment\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-aligns-with-opener ()
   "Dangling conversion aligns closing parenthesis with opening parenthesis."
@@ -787,7 +1122,12 @@
           ;; Verify inner ) aligns with (let at column 2
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "  )$")))))))
+          (should (looking-at "  )$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-no-extra-blank-lines ()
   "Dangling conversion does not create extra blank lines."
@@ -804,14 +1144,20 @@
           (goto-char (point-min))
           (while (not (eobp))
             (should-not (looking-at "^\\s-*$"))
-            (forward-line 1))
+            (forward-line 1)
+          )
           ;; Check that the last line ends with )
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
           (should (looking-at "\\s-*)$"))
           (goto-char (point-min))
-          (should-not (re-search-forward "\n\n" nil t)))))))
+          (should-not (re-search-forward "\n\n" nil t))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-aligns-column-zero ()
   "Dangling conversion keeps column-0 closing parenthesis at column 0."
@@ -831,34 +1177,50 @@
           ;; Check the inner closing paren (closing nested)
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "  )$")))))  ; Should be at column 2
-    ))
+          (should (looking-at "  )$"))
+        )
+      )
+    )  ; Should be at column 2
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-keeps-single-line ()
   "Dangling conversion keeps single-line parentheses compact."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo) (bar)")
-          (expected "(foo) (bar)"))
+          (expected "(foo) (bar)")
+         )
       (insert original)
       (pearl-paren-style-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected: %s"
-                            original result expected))
-          (should (string= result expected)))))))
+                            original result expected
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-convert-to-dangling-converts-multi-line ()
   "Dangling conversion converts multi-line parentheses to dangling style."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(foo\n  (bar))")
-          (expected-style 'dangling))
+          (expected-style 'dangling)
+         )
       (insert original)
       (pearl-paren-style-dangling)
       (let ((result (buffer-string))
-            (detected (pearl-paren-style--detect)))
+            (detected (pearl-paren-style--detect))
+           )
         (ert-info ((format "Original:\n%s\nResult:\n%s\nDetected: %s\nExpected style: %s"
-                            original result detected expected-style))
+                            original result detected expected-style
+                   )
+                  )
           (should (eq detected expected-style))
           ;; Check there are no extra blank lines
           (should (string-match-p ")$" result))
@@ -868,7 +1230,12 @@
           (forward-line 1)
           (end-of-line)
           (backward-char)
-          (should (looking-at ")")))))))
+          (should (looking-at ")"))
+        )
+      )
+    )
+  )
+)
 
 ;;;; File processing tests
 
@@ -876,14 +1243,19 @@
   "File processing returns error status for read-only files."
   (let ((temp-file (make-temp-file "pearl-readonly-" nil ".el")))
     (with-temp-file temp-file
-      (insert "(foo\n  (bar))"))
+      (insert "(foo\n  (bar))")
+    )
     (set-file-modes temp-file #o444)
     (unwind-protect
         (let ((result (pearl-paren-style--process-file temp-file 'compact)))
           (should (eq (car result) 'error))
-          (should (string-match-p "IO error" (cdr result))))
+          (should (string-match-p "IO error" (cdr result)))
+        )
       (set-file-modes temp-file #o644)
-      (delete-file temp-file))))
+      (delete-file temp-file)
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-file-error-recovery ()
   "File processing handles various error conditions."
@@ -891,17 +1263,21 @@
          (valid-file (expand-file-name "valid.el" temp-dir))
          (unbalanced-file (expand-file-name "unbalanced.el" temp-dir))
          (readonly-file (expand-file-name "readonly.el" temp-dir))
-         (non-el-file (expand-file-name "non-el.txt" temp-dir)))
+         (non-el-file (expand-file-name "non-el.txt" temp-dir))
+        )
     ;; Create test files
     (with-temp-file valid-file
-      (insert "(defun test ()\n  (list 1 2 3))"))
+      (insert "(defun test ()\n  (list 1 2 3))")
+    )
     (with-temp-file unbalanced-file
       (insert "(defun test ()\n  (list 1 2 3)")  ; Missing closing paren
-      )
+    )
     (with-temp-file readonly-file
-      (insert "(defun test ()\n  (list 1 2 3))"))
+      (insert "(defun test ()\n  (list 1 2 3))")
+    )
     (with-temp-file non-el-file
-      (insert "This is not elisp code"))
+      (insert "This is not elisp code")
+    )
 
     (unwind-protect
         (progn
@@ -911,17 +1287,20 @@
           ;; Test 2: Unbalanced file should return error status
           (let ((result (pearl-paren-style--process-file unbalanced-file 'compact)))
             (should (eq (car result) 'error))
-            (should (string-match-p "Unbalanced" (cdr result))))
+            (should (string-match-p "Unbalanced" (cdr result)))
+          )
 
           ;; Test 3: Read-only file should return error status
           (set-file-modes readonly-file #o444)
           (let ((result (pearl-paren-style--process-file readonly-file 'compact)))
             (should (eq (car result) 'error))
-            (should (string-match-p "IO error" (cdr result))))
+            (should (string-match-p "IO error" (cdr result)))
+          )
 
           ;; Test 4: Non-el file should be filtered out by collect-el-files
           (let ((files (pearl-paren-style--collect-el-files (list non-el-file))))
-            (should (null files)))
+            (should (null files))
+          )
 
           ;; Test 5: Mixed files in convert-files
           (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) t)))
@@ -929,17 +1308,27 @@
               (cl-letf (((symbol-function 'message)
                          (lambda (format &rest args)
                            (when (string-match "Processed" (apply #'format format args))
-                             (setq processed-count 1)))))
+                             (setq processed-count 1)
+                           )
+                         )
+                        )
+                       )
                 (pearl-paren-style-convert-files 'compact (list valid-file unbalanced-file))
                 (should (= processed-count 1))  ; Only valid file processed
-                ))))
+              )
+            )
+          )
+        )
       ;; Cleanup - restore permissions before deletion
       (ignore-errors (set-file-modes readonly-file #o644))
       (ignore-errors (delete-file valid-file))
       (ignore-errors (delete-file unbalanced-file))
       (ignore-errors (delete-file readonly-file))
       (ignore-errors (delete-file non-el-file))
-      (delete-directory temp-dir t))))
+      (delete-directory temp-dir t)
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-file-symlink-handling ()
   "File collection handles symbolic links."
@@ -948,15 +1337,18 @@
          (link-file (expand-file-name "link.el" temp-dir))
          (subdir (expand-file-name "subdir" temp-dir))
          (nested-file (expand-file-name "nested.el" subdir))
-         (link-to-dir (expand-file-name "link-to-dir" temp-dir)))
+         (link-to-dir (expand-file-name "link-to-dir" temp-dir))
+        )
     ;; Create directory structure
     (make-directory subdir t)
 
     ;; Create real files
     (with-temp-file real-file
-      (insert "(defun real ()\n  (list 1 2 3))"))
+      (insert "(defun real ()\n  (list 1 2 3))")
+    )
     (with-temp-file nested-file
-      (insert "(defun nested ()\n  (progn\n    (a)\n    (b)))"))
+      (insert "(defun nested ()\n  (progn\n    (a)\n    (b)))")
+    )
 
     ;; Create symbolic links
     (make-symbolic-link real-file link-file)
@@ -970,13 +1362,16 @@
               (should (= (length files) 3))  ; real.el, link.el, nested.el
               (should (member real-file files))
               (should (member link-file files))
-              (should (member nested-file files))))
+              (should (member nested-file files))
+            )
+          )
 
           ;; Test processing symlink file
           (should (pearl-paren-style--process-file link-file 'dangling))
           (with-temp-buffer
             (insert-file-contents link-file)
-            (should (string-match-p "  (list 1 2 3)\n)" (buffer-string))))
+            (should (string-match-p "  (list 1 2 3)\n)" (buffer-string)))
+          )
 
           ;; Test processing directory symlink - should resolve to actual file
           (let ((files (pearl-paren-style--collect-el-files (list link-to-dir))))
@@ -984,14 +1379,20 @@
               (should (= (length files) 1))
               ;; directory-files-recursively with t follows symlinks, returns resolved path
               ;; So it returns the symlink path, not the original path
-              (should (member (expand-file-name "nested.el" link-to-dir) files)))))
+              (should (member (expand-file-name "nested.el" link-to-dir) files))
+            )
+          )
+        )
       ;; Cleanup
       (ignore-errors (delete-file link-file))
       (ignore-errors (delete-file link-to-dir))
       (ignore-errors (delete-file real-file))
       (ignore-errors (delete-file nested-file))
       (ignore-errors (delete-directory subdir t))
-      (delete-directory temp-dir t))))
+      (delete-directory temp-dir t)
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-file-processing ()
   "File processing functions work with temporary files."
@@ -999,77 +1400,102 @@
          (file1 (expand-file-name "test1.el" temp-dir))
          (file2 (expand-file-name "test2.el" temp-dir))
          (subdir (expand-file-name "subexec" temp-dir))
-         (file3 (expand-file-name "test3.el" subdir)))
+         (file3 (expand-file-name "test3.el" subdir))
+        )
 
     ;; Create directory structure
     (make-directory subdir t)
 
     ;; Create test files
     (with-temp-file file1
-      (insert "(defun test1 ()\n  (list 1 2 3))"))
+      (insert "(defun test1 ()\n  (list 1 2 3))")
+    )
 
     (with-temp-file file2
-      (insert "(defun test2 ()\n  (let ((x 1))\n    (foo)\n  )\n)"))
+      (insert "(defun test2 ()\n  (let ((x 1))\n    (foo)\n  )\n)")
+    )
 
     (with-temp-file file3
-      (insert "(defun test3 ()\n  (progn\n    (a)\n    (b)\n  )\n)"))
+      (insert "(defun test3 ()\n  (progn\n    (a)\n    (b)\n  )\n)")
+    )
 
     ;; Test processing single file
     (should (pearl-paren-style--process-file file1 'dangling))
     (with-temp-buffer
       (insert-file-contents file1)
-      (should (string-match-p "  (list 1 2 3)\n)" (buffer-string))))
+      (should (string-match-p "  (list 1 2 3)\n)" (buffer-string)))
+    )
 
     ;; Test processing multiple files
     (let ((files (list file1 file2)))
       (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) t)))
-        (pearl-paren-style-convert-files 'compact files))
+        (pearl-paren-style-convert-files 'compact files)
+      )
       (with-temp-buffer
         (insert-file-contents file2)
-        (should (string-match-p "  (let ((x 1))\n    (foo))" (buffer-string)))))
+        (should (string-match-p "  (let ((x 1))\n    (foo))" (buffer-string)))
+      )
+    )
 
     ;; Test directory recursion
     (let ((files (list temp-dir)))
       (cl-letf (((symbol-function 'y-or-n-p) (lambda (_) t)))
-        (pearl-paren-style-convert-files 'dangling files))
+        (pearl-paren-style-convert-files 'dangling files)
+      )
       (with-temp-buffer
         (insert-file-contents file3)
-        (should (string-match-p "    (a)\n    (b)\n  )" (buffer-string)))))
+        (should (string-match-p "    (a)\n    (b)\n  )" (buffer-string)))
+      )
+    )
 
     ;; Cleanup
-    (delete-directory temp-dir t)))
+    (delete-directory temp-dir t)
+  )
+)
 
 (ert-deftest test-pearl-paren-style-file-wildcard-selection ()
   "Wildcard file selection outside Dired mode."
   (let ((temp-dir (make-temp-file "pearl-wildcard-test-" t))
         (temp-file1 (make-temp-file "test-" nil ".el"))
-        (temp-file2 (make-temp-file "test-" nil ".el")))
+        (temp-file2 (make-temp-file "test-" nil ".el"))
+       )
     (unwind-protect
         (with-temp-buffer
           (emacs-lisp-mode)
           ;; Create test files with content
           (with-temp-file temp-file1
-            (insert "(defun test1 ()\n  (list 1 2 3))"))
+            (insert "(defun test1 ()\n  (list 1 2 3))")
+          )
           (with-temp-file temp-file2
-            (insert "(defun test2 ()\n  (let ((x 1))\n    (foo)\n  )\n)"))
+            (insert "(defun test2 ()\n  (let ((x 1))\n    (foo)\n  )\n)")
+          )
           ;; Mock read-file-name to return a single file (not wildcard)
           (cl-letf (((symbol-function 'read-file-name)
                      (lambda (&rest _args)
-                       temp-file1))
+                       temp-file1
+                     )
+                    )
                     ((symbol-function 'y-or-n-p)
-                     (lambda (_) t)))
+                     (lambda (_) t)
+                    )
+                   )
             ;; Test compact-files with single file selection
             (should (pearl-paren-style-compact-files (list temp-file1)))
             ;; Verify file was processed to COMPACT style
             (with-temp-buffer
               (insert-file-contents temp-file1)
-              (should (string-match-p "  (list 1 2 3))" (buffer-string))))  ; Compact style: ) on same line
+              (should (string-match-p "  (list 1 2 3))" (buffer-string)))
+            )  ; Compact style: ) on same line
             ;; Note: temp-file2 should NOT be processed since only temp-file1 was selected
-            ))
+          )
+        )
       ;; Cleanup
       (delete-file temp-file1)
       (delete-file temp-file2)
-      (delete-directory temp-dir t))))
+      (delete-directory temp-dir t)
+    )
+  )
+)
 
 ;;;; DWIM tests
 
@@ -1086,15 +1512,27 @@
     ;; Mock the interactive prompt
     (cl-letf (((symbol-function 'completing-read)
                (lambda (_prompt _collection &optional _predicate _require-match _initial-input _hist _def _inherit-input-method)
-                 "compact")))
+                 "compact"
+               )
+              )
+             )
       ;; DWIM will call call-interactively, so we need to simulate interactive call
       (cl-letf (((symbol-function 'call-interactively)
                  (lambda (command)
                    (when (eq command 'pearl-paren-style-convert-region)
-                     (pearl-paren-style-convert-region 'compact (region-beginning) (region-end))))))
+                     (pearl-paren-style-convert-region 'compact (region-beginning) (region-end))
+                   )
+                 )
+                )
+               )
         (pearl-paren-style-dwim)
         (let ((result (buffer-string)))
-          (should (string-match-p "  (let ((x 1))\n    (foo))" result)))))))
+          (should (string-match-p "  (let ((x 1))\n    (foo))" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-dwim-buffer ()
   "DWIM calls toggle when no region is active."
@@ -1106,7 +1544,11 @@
       (let ((result (buffer-string)))
         (should-not (string= result original))
         ;; Should have toggled to dangling
-        (should (string-match-p "  (let ((x 1))\n    (foo)\n  )" result))))))
+        (should (string-match-p "  (let ((x 1))\n    (foo)\n  )" result))
+      )
+    )
+  )
+)
 
 ;;;; Comment handling tests
 
@@ -1119,13 +1561,20 @@
       (pearl-paren-style--to-dangling)
       (let ((result1 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-dangling:\n%s" original result1))
-          (should (string-match-p (regexp-quote "; note: open paren '('") result1))))
+          (should (string-match-p (regexp-quote "; note: open paren '('") result1))
+        )
+      )
       (delete-region (point-min) (point-max))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result2 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-compact:\n%s" original result2))
-          (should (string-match-p (regexp-quote "; note: open paren '('") result2)))))))
+          (should (string-match-p (regexp-quote "; note: open paren '('") result2))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-ignores-unbalanced-parens ()
   "Comment handling ignores unbalanced parentheses in comments."
@@ -1136,13 +1585,20 @@
       (pearl-paren-style--to-dangling)
       (let ((result1 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-dangling:\n%s" original result1))
-          (should (string-match-p (regexp-quote "; unbalanced '(()' in comment") result1))))
+          (should (string-match-p (regexp-quote "; unbalanced '(()' in comment") result1))
+        )
+      )
       (delete-region (point-min) (point-max))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result2 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-compact:\n%s" original result2))
-          (should (string-match-p (regexp-quote "; unbalanced '(()' in comment") result2)))))))
+          (should (string-match-p (regexp-quote "; unbalanced '(()' in comment") result2))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-ignores-multiline-parens ()
   "Comment handling ignores parentheses in multi-line comments."
@@ -1159,7 +1615,9 @@
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at ")$"))))
+          (should (looking-at ")$"))
+        )
+      )
       (delete-region (point-min) (point-max))
       (insert original)
       (pearl-paren-style--to-compact)
@@ -1167,7 +1625,12 @@
         (ert-info ((format "Original:\n%s\nAfter to-compact:\n%s" original result2))
           (should (string-match-p "#|" result2))
           (should (string-match-p "|#" result2))
-          (should (string-match-p "(foo\n  (bar))" result2)))))))
+          (should (string-match-p "(foo\n  (bar))" result2))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-ignores-many-left-parens ()
   "Comment handling ignores many unbalanced left parentheses."
@@ -1178,13 +1641,20 @@
       (pearl-paren-style--to-dangling)
       (let ((result1 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-dangling:\n%s" original result1))
-          (should (string-match-p (regexp-quote "; ((((((") result1))))
+          (should (string-match-p (regexp-quote "; ((((((") result1))
+        )
+      )
       (delete-region (point-min) (point-max))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result2 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-compact:\n%s" original result2))
-          (should (string-match-p (regexp-quote "; ((((((") result2)))))))
+          (should (string-match-p (regexp-quote "; ((((((") result2))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-ignores-many-right-parens ()
   "Comment handling ignores many unbalanced right parentheses."
@@ -1195,13 +1665,20 @@
       (pearl-paren-style--to-dangling)
       (let ((result1 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-dangling:\n%s" original result1))
-          (should (string-match-p (regexp-quote "; ))))))") result1))))
+          (should (string-match-p (regexp-quote "; ))))))") result1))
+        )
+      )
       (delete-region (point-min) (point-max))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result2 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-compact:\n%s" original result2))
-          (should (string-match-p (regexp-quote "; ))))))") result2)))))))
+          (should (string-match-p (regexp-quote "; ))))))") result2))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-ignores-mixed-parens ()
   "Comment handling ignores mixed unbalanced parentheses."
@@ -1212,13 +1689,20 @@
       (pearl-paren-style--to-dangling)
       (let ((result1 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-dangling:\n%s" original result1))
-          (should (string-match-p (regexp-quote "; ()())((") result1))))
+          (should (string-match-p (regexp-quote "; ()())((") result1))
+        )
+      )
       (delete-region (point-min) (point-max))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result2 (buffer-string)))
         (ert-info ((format "Original:\n%s\nAfter to-compact:\n%s" original result2))
-          (should (string-match-p (regexp-quote "; ()())((") result2)))))))
+          (should (string-match-p (regexp-quote "; ()())((") result2))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Character literal tests
 
@@ -1232,7 +1716,12 @@
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
           (should (string-match-p "?\\\\(" result))
-          (should (string-match-p "?\\\\)" result)))))))
+          (should (string-match-p "?\\\\)" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-char-ignores-semicolon ()
   "Character literal ?\; is not treated as comment start."
@@ -1245,21 +1734,34 @@
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
           ;; Should merge ) with (bar) line despite ?\; on previous line
           (should (string-match-p (regexp-quote "(list ?\\; ?a)") result))
-          (should (string-match-p "(foo\n  (bar))" result)))))))
+          (should (string-match-p "(foo\n  (bar))" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-char-converts-with-semicolon ()
   "Compact conversion works with character literal ?\; in code."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun test ()\n  (let ((x ?\\;))\n    (process x)\n  )\n)")
-          (expected "(defun test ()\n  (let ((x ?\\;))\n    (process x)))\n"))
+          (expected "(defun test ()\n  (let ((x ?\\;))\n    (process x)))\n")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
+                            original result expected
+                   )
+                  )
           (should (string-match-p "?\\\\;" result))
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-char-handles-backslash ()
   "Character literal ?\\ does not break parsing."
@@ -1270,21 +1772,34 @@
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
-          (should (string-match-p "?\\\\\\\\" result)))))))
+          (should (string-match-p "?\\\\\\\\" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-char-preserves-special ()
   "All special character literals are preserved."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let* ((original "(list ?\\n ?\\t ?\\r ?\\f ?\\b ?\\a ?\\e ?\\s ?\\d ?\\C-a ?\\M-a ?\\S-a ?\\H-a ?\\A-a ?\\s- ?\\) ?\\( ?\\; ?\\\" ?\\\\ ?\\| ?\\[ ?\\] ?\\{ ?\\} ?\\< ?\\> ?\\` ?\\' ?\\, ?\\@ ?\\# ?\\$ ?\\% ?\\& ?\\* ?\\+ ?\\- ?\\. ?\\/ ?\\: ?\\= ?\\? ?\\^ ?\\_ ?\\` ?\\\~ ?\\! ?\\|)")
-           (expected original))
+           (expected original)
+          )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         ;; Capture variables inside ert-info
         (ert-info ((let ((orig original) (exp expected) (res result))
-                     (format "Original:\n%s\nResult:\n%s\nExpected:\n%s" orig res exp)))
-          (should (string= result expected)))))))
+                     (format "Original:\n%s\nResult:\n%s\nExpected:\n%s" orig res exp)
+                   )
+                  )
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 ;;;; String handling tests
 
@@ -1301,14 +1816,20 @@
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "\\s-*)$")))))))
+          (should (looking-at "\\s-*)$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-ignores-unbalanced-parens ()
   "String handling ignores unbalanced parentheses inside strings."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun test ()\n  (message \"String with (unbalanced paren\")\n  (other))")
-          (expected-dangling "(defun test ()\n  (message \"String with (unbalanced paren\")\n  (other)\n)"))
+          (expected-dangling "(defun test ()\n  (message \"String with (unbalanced paren\")\n  (other)\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
@@ -1322,7 +1843,15 @@
             (let ((string-start (point)))
               (search-forward "\"")
               (let ((string-content (buffer-substring string-start (1- (point)))))
-                (should (string-match-p "unbalanced paren" string-content))))))))))
+                (should (string-match-p "unbalanced paren" string-content))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-ignores-docstring-parens ()
   "String handling ignores parentheses inside docstrings."
@@ -1337,7 +1866,12 @@
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "\\s-*)$")))))))
+          (should (looking-at "\\s-*)$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-ignores-multiline-parens ()
   "String handling ignores parentheses inside multi-line strings."
@@ -1350,14 +1884,20 @@
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
           (should (string-match-p "\"line1" result))
           (should (string-match-p "with (parens)" result))
-          (should (string-match-p "line3\"" result)))))))
+          (should (string-match-p "line3\"" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-ignores-multiline-parens-inside ()
   "String handling ignores parentheses inside multiline strings."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun example ()\n  (message \"First line\nSecond (with parens)\nThird line\")\n  (other-func))")
-          (expected-dangling "(defun example ()\n  (message \"First line\nSecond (with parens)\nThird line\")\n  (other-func)\n)"))
+          (expected-dangling "(defun example ()\n  (message \"First line\nSecond (with parens)\nThird line\")\n  (other-func)\n)")
+         )
       ;; Test dangling conversion
       (insert original)
       (pearl-paren-style--to-dangling)
@@ -1368,14 +1908,20 @@
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "\\s-*)$")))))))
+          (should (looking-at "\\s-*)$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-ignores-nested-parens ()
   "String handling ignores parentheses inside nested strings/quotes."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun test ()\n  (let ((str \"Outer 'string with (parens inside)'\"))\n    (concat str \" another (string)\"))\n)")
-          (expected-dangling "(defun test ()\n  (let ((str \"Outer 'string with (parens inside)'\"))\n    (concat str \" another (string)\")\n  )\n)"))
+          (expected-dangling "(defun test ()\n  (let ((str \"Outer 'string with (parens inside)'\"))\n    (concat str \" another (string)\")\n  )\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
@@ -1386,7 +1932,12 @@
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "\\s-*)$")))))))
+          (should (looking-at "\\s-*)$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-preserves-escapes ()
   "String handling preserves escape sequences."
@@ -1400,30 +1951,44 @@
           (should (string-match-p "\\\\n" result))
           (should (string-match-p "\\\\t" result))
           (should (string-match-p "\\\\\"" result))
-          (should (string-match-p "\\\\\\\\" result)))))))
+          (should (string-match-p "\\\\\\\\" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-preserves-escaped-quotes-and-parens ()
   "String handling preserves escaped quotes and parentheses."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let* ((original "(message \"String with \\\"quotes\\\" and \\(parens\\)\")")
-           (expected original))
+           (expected original)
+          )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         ;; Capture variables inside ert-info
         (ert-info ((let ((orig original) (exp expected) (res result))
-                     (format "Original:\n%s\nResult:\n%s\nExpected:\n%s" orig res exp)))
+                     (format "Original:\n%s\nResult:\n%s\nExpected:\n%s" orig res exp)
+                   )
+                  )
           (should (string-match-p "\\\\\"quotes\\\\\"" result))
           (should (string-match-p "\\\\(parens\\\\)" result))
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-distinguishes-from-real-paren ()
   "String handling distinguishes string ) from real closing parenthesis."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(concat \"value)\" arg)")
-          (expected "(concat \"value)\" arg)"))
+          (expected "(concat \"value)\" arg)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
@@ -1431,14 +1996,20 @@
           ;; The string "value)" should remain intact
           (should (string-match-p "\"value)\"" result))
           ;; Single-line parens should not be converted to dangling
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-distinguishes-comments-from-strings ()
   "String handling distinguishes comments from strings with ; and parentheses."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun example ()\n  ;; Real comment\n  (message \"String with ; fake comment and (paren)\")\n  (code))")
-          (expected-dangling "(defun example ()\n  ;; Real comment\n  (message \"String with ; fake comment and (paren)\")\n  (code)\n)"))
+          (expected-dangling "(defun example ()\n  ;; Real comment\n  (message \"String with ; fake comment and (paren)\")\n  (code)\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
@@ -1451,14 +2022,20 @@
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at "\\s-*)$")))))))
+          (should (looking-at "\\s-*)$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-handles-backslash-continued ()
   "String handling handles backslash-continued strings."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun foo ()\n  (message \"\\\nline1\nline2 (with paren)\nline3\")\n  (bar))")
-          (expected-compact "(defun foo ()\n  (message \"\\\nline1\nline2 (with paren)\nline3\")\n  (bar))"))
+          (expected-compact "(defun foo ()\n  (message \"\\\nline1\nline2 (with paren)\nline3\")\n  (bar))")
+         )
       ;; Test compact conversion (should not change)
       (insert original)
       (pearl-paren-style--to-compact)
@@ -1466,20 +2043,28 @@
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
           (should (string-match-p "\\\\\nline1" result))
           (should (string-match-p "line2 (with paren)" result))
-          (should (string= result expected-compact)))))))
+          (should (string= result expected-compact))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-string-handles-complex-nested ()
   "String handling handles complex nesting of strings and parentheses."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(defun complex ()\n  (let ((msg (format \"Result: %s\"\n                       (if condition\n                           \"(positive)\"\n                         \"(negative)\"))))\n    (message \"Output: %s\" msg))\n  (final))")
-          (expected-dangling "(defun complex ()\n  (let ((msg (format \"Result: %s\"\n                       (if condition\n                           \"(positive)\"\n                         \"(negative)\"\n                       )\n             )\n        )\n       )\n    (message \"Output: %s\" msg)\n  )\n  (final)\n)"))
+          (expected-dangling "(defun complex ()\n  (let ((msg (format \"Result: %s\"\n                       (if condition\n                           \"(positive)\"\n                         \"(negative)\"\n                       )\n             )\n        )\n       )\n    (message \"Output: %s\" msg)\n  )\n  (final)\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         ;; Capture variables inside ert-info
         (ert-info ((let ((orig original) (exp expected-dangling) (res result))
-                     (format "Original:\n%s\nResult:\n%s\nExpected:\n%s" orig res exp)))
+                     (format "Original:\n%s\nResult:\n%s\nExpected:\n%s" orig res exp)
+                   )
+                  )
           ;; All string literals should be preserved
           (should (string-match-p "\"Result: %s\"" result))
           (should (string-match-p "\"(positive)\"" result))
@@ -1490,7 +2075,12 @@
           ;; The actual result shows "  )\n  (final\n)" but with extra newline at end
           ;; The pattern should match with the newline at the end
           ;; Check that the pattern matches
-          (should (string-match-p (regexp-quote "  )\n  (final)\n)") result)))))))
+          (should (string-match-p (regexp-quote "  )\n  (final)\n)") result))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Annotation tests
 
@@ -1505,17 +2095,28 @@
       (let ((buffer-text (buffer-string))
             (overlay-count (length pearl-paren-style--annotation-overlays))
             (overlay-positions (mapcar (lambda (ov) (overlay-start ov)) pearl-paren-style--annotation-overlays))
-            (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays)))
+            (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays))
+           )
 
         (let ((display-str (format "Buffer after conversion:\n%s\nAnnotation overlay count: %d\nOverlay positions: %s\nAnnotation texts: %s"
-                                   buffer-text overlay-count overlay-positions overlay-texts)))
+                                   buffer-text overlay-count overlay-positions overlay-texts
+                           )
+              )
+             )
           (ert-info ((format "%s" display-str))
             (should (pearl-paren-style--annotation-enabled-p))
             (should pearl-paren-style--annotation-overlays)
             (should (= overlay-count 2))
             ;; Check annotation text
             (dolist (text overlay-texts)
-              (should (string-match-p "← [0-9]+:[0-9]+ " text)))))))))
+              (should (string-match-p "← [0-9]+:[0-9]+ " text))
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-already-dangling ()
   "Annotation should show when file is already in dangling style."
@@ -1530,9 +2131,16 @@
 
       (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
         (ert-info ((format "Annotation overlay count: %d\nBuffer content:\n%s"
-                           overlay-count (buffer-string)))
+                           overlay-count (buffer-string)
+                   )
+                  )
           (should (pearl-paren-style--annotation-enabled-p))
-          (should (> overlay-count 0)))))))
+          (should (> overlay-count 0))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-toggle-to-dangling ()
   "Annotation should show when toggling from compact to dangling."
@@ -1545,12 +2153,20 @@
       (pearl-paren-style-toggle)
 
       (let ((overlay-count (length pearl-paren-style--annotation-overlays))
-            (detected-style (pearl-paren-style--detect)))
+            (detected-style (pearl-paren-style--detect))
+           )
         (ert-info ((format "Detected style: %s\nAnnotation overlay count: %d\nBuffer content:\n%s"
-                           detected-style overlay-count (buffer-string)))
+                           detected-style overlay-count (buffer-string)
+                   )
+                  )
           (should (eq detected-style 'dangling))
           (should (pearl-paren-style--annotation-enabled-p))
-          (should (> overlay-count 0)))))))
+          (should (> overlay-count 0))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-convert-to-dangling ()
   "Annotation should show when converting to dangling style."
@@ -1563,12 +2179,20 @@
       (pearl-paren-style-convert 'dangling)
 
       (let ((overlay-count (length pearl-paren-style--annotation-overlays))
-            (detected-style (pearl-paren-style--detect)))
+            (detected-style (pearl-paren-style--detect))
+           )
         (ert-info ((format "Detected style: %s\nAnnotation overlay count: %d\nBuffer content:\n%s"
-                           detected-style overlay-count (buffer-string)))
+                           detected-style overlay-count (buffer-string)
+                   )
+                  )
           (should (eq detected-style 'dangling))
           (should (pearl-paren-style--annotation-enabled-p))
-          (should (> overlay-count 0)))))))
+          (should (> overlay-count 0))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-disabled ()
   "Annotation disabled when pearl-paren-style-show-annotations is nil."
@@ -1580,13 +2204,24 @@
 
         (pearl-paren-style--to-dangling)
         (let ((dangling-text (buffer-string))
-              (overlay-count (length pearl-paren-style--annotation-overlays)))
+              (overlay-count (length pearl-paren-style--annotation-overlays))
+             )
 
           (let ((display-str (format "Initial code:\n%s\nConfiguration: pearl-paren-style-show-annotations=%s\nCode after conversion:\n%s\nAnnotation overlay count: %d"
                                      original-text pearl-paren-style-show-annotations
-                                     dangling-text overlay-count)))
+                                     dangling-text overlay-count
+                             )
+                )
+               )
             (ert-info ((format "%s" display-str))
-              (should (= overlay-count 0)))))))))
+              (should (= overlay-count 0))
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-removal ()
   "Test annotation removal when switching to compact."
@@ -1596,19 +2231,31 @@
       (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
       (pearl-paren-style--to-dangling)
       (let ((dangling-text (buffer-string))
-            (overlay-count (length pearl-paren-style--annotation-overlays)))
+            (overlay-count (length pearl-paren-style--annotation-overlays))
+           )
 
         (pearl-paren-style--to-compact)
         (let ((compact-text (buffer-string))
-              (final-overlay-count (length pearl-paren-style--annotation-overlays)))
+              (final-overlay-count (length pearl-paren-style--annotation-overlays))
+             )
 
           (let ((display-str (format "After conversion to dangling:\n%s\nAnnotation overlay count: %d\nAfter conversion to compact:\n%s\nAnnotation overlay count: %d\nAnnotation enabled: %s"
                                      dangling-text overlay-count
-                                     compact-text final-overlay-count (pearl-paren-style--annotation-enabled-p))))
+                                     compact-text final-overlay-count (pearl-paren-style--annotation-enabled-p)
+                             )
+                )
+               )
             (ert-info ((format "%s" display-str))
               (should (> overlay-count 0)) ; Should have overlays
               (should-not (pearl-paren-style--annotation-enabled-p))
-              (should (= final-overlay-count 0)))))))))
+              (should (= final-overlay-count 0))
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-text ()
   "Test annotation text generation."
@@ -1631,29 +2278,50 @@
               (line-content (buffer-substring line-start line-end))
               (full-display (concat (buffer-substring (point-min) line-start)
                                     line-content
-                                    (buffer-substring line-end (point-max))))
+                                    (buffer-substring line-end (point-max))
+                            )
+              )
               (result (pearl-paren-style--get-annotation closing-pos))
               (text (car result))
-              (distance (cdr result)))
+              (distance (cdr result))
+              )
 
           (let ((display-str (format "Test info:\nClosing parenthesis position: %d\nLine number: %d\nColumn: %d\nFull code:\n%s\nAnnotation text: %s\nDistance: %s"
-                                     closing-pos line-num col full-display text distance)))
+                                     closing-pos line-num col full-display text distance
+                             )
+                )
+               )
             ;; If annotation exists, add full code with annotation
             (when text
               (let ((full-display-with-annotation (concat (buffer-substring (point-min) line-start)
                                                           line-content
                                                           text
-                                                          (buffer-substring line-end (point-max)))))
+                                                          (buffer-substring line-end (point-max))
+                                                  )
+                    )
+                   )
                 (setq display-str (concat display-str
                                           "\n\nFull code with annotation:\n"
-                                          full-display-with-annotation))))
+                                          full-display-with-annotation
+                                  )
+                )
+              )
+            )
 
             (ert-info ((format "%s" display-str))
               (should (= line-num 4))
               (should text) ; Should have annotation (different lines)
               (when text
                 (should (string-match-p "← [0-9]+:[0-9]+ " text))
-                (should (string-match-p "when" text))))))))))
+                (should (string-match-p "when" text))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-no-single-line ()
   "No annotation for single-line parentheses."
@@ -1661,7 +2329,10 @@
     (emacs-lisp-mode)
     (insert "(foo)")
     (let ((result (pearl-paren-style--get-annotation (point))))
-      (should-not result))))
+      (should-not result)
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-in-string ()
   "No annotation for parentheses in strings."
@@ -1671,63 +2342,12 @@
     (goto-char (point-max))
     (search-backward ")")
     (let ((result (pearl-paren-style--get-annotation (point))))
-      (should-not result))))
+      (should-not result)
+    )
+  )
+)
 
-(ert-deftest test-pearl-paren-style-annotation-update-after-edit ()
-  "Test annotation updates after editing."
-  (with-temp-buffer
-    (emacs-lisp-mode)
-    (let ((pearl-paren-style-show-annotations t)
-          (pearl-paren-style-annotation-delay 0.01)
-          (debug-on-error t))
-      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
-      (pearl-paren-style--to-dangling)
-      (let ((original-count (length pearl-paren-style--annotation-overlays)))
-        ;; Edit the opening line
-        (goto-char (point-min))
-        (search-forward "(when t")
-        (let ((match-beg (match-beginning 0))
-              (match-end (match-end 0)))
-          (replace-match "(when condition")
-          ;; Directly call update function
-          (pearl-paren-style--update-annotations-incremental (point-min) (point-max))
 
-          ;; Collect information
-          (let ((buffer-text (buffer-string))
-                (overlay-count (length pearl-paren-style--annotation-overlays))
-                (overlay-positions (mapcar (lambda (ov) (overlay-start ov)) pearl-paren-style--annotation-overlays))
-                (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays)))
-
-            ;; Build display string
-            (let ((display-str (format "After edit buffer content:\n%s\nAnnotation overlay count: %d\nOverlay positions: %s\nAnnotation texts: %s"
-                                       buffer-text overlay-count overlay-positions overlay-texts)))
-              ;; Display all information in one ert-info
-              (ert-info ((format "%s" display-str))
-                ;; Assertions
-                (should (= overlay-count original-count))
-                ;; Check annotation updated
-                (let ((found-updated nil))
-                  (dolist (text overlay-texts)
-                    (when (and text (string-match-p "when" text))
-                      (setq found-updated t)
-                      (should (string-match-p "condition" text))))
-                  (should found-updated))))))))))
-
-(ert-deftest test-pearl-paren-style-annotation-performance ()
-  "Test annotation performance with many parentheses."
-  (with-temp-buffer
-    (emacs-lisp-mode)
-    (let ((pearl-paren-style-show-annotations t))
-      ;; Create code with many parentheses
-      (dotimes (i 50)
-        (insert (format "(defun test-%d ()\n  (let ((x %d))\n    (when x\n      (print x)\n    )\n  )\n)\n\n" i i)))
-      (ert-info ((format "Created %d functions" 50))
-        (let ((start-time (current-time)))
-          (pearl-paren-style--to-dangling)
-          (let ((elapsed (float-time (time-since start-time))))
-            (ert-info ((format "Annotation creation time: %.3fs" elapsed))
-              (should (<= elapsed 1.0)) ; Should complete within 1 second
-              )))))))
 
 (ert-deftest test-pearl-paren-style-annotation-not-selectable ()
   "Annotation overlay text should not be selectable."
@@ -1740,21 +2360,38 @@
       (let ((overlay-count (length pearl-paren-style--annotation-overlays))
             (overlay-info (mapcar (lambda (ov)
                                     (list (overlay-start ov)
-                                          (overlay-get ov 'after-string)))
-                                  pearl-paren-style--annotation-overlays)))
+                                          (overlay-get ov 'after-string)
+                                    )
+                                  )
+                                  pearl-paren-style--annotation-overlays
+                          )
+            )
+           )
 
         (let ((display-str (format "Annotation overlay count: %d\nOverlay info: %s"
-                                   overlay-count overlay-info)))
+                                   overlay-count overlay-info
+                           )
+              )
+             )
           (ert-info ((format "%s" display-str))
             (should overlay-count)
             ;; Check overlay properties
             (dolist (info overlay-info)
               (let ((pos (car info))
-                    (annotation (cadr info)))
+                    (annotation (cadr info))
+                   )
                 (should annotation)
                 ;; after-string is not selectable, but we can check it exists
                 (should (stringp annotation))
-                (should (> (length annotation) 0))))))))))
+                (should (> (length annotation) 0))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
 
 ;;;; Annotation color tests
 
@@ -1766,14 +2403,24 @@
                (lambda (face attribute &optional frame inherit)
                  (cond
                   ((eq face 'font-lock-comment-face)
-                   "#888888")
+                   "#888888"
+                  )
                   ((eq face 'default)
-                   "#242424")
+                   "#242424"
+                  )
                   (t
-                   (error "Unexpected face in test: %s" face))))))
+                   (error "Unexpected face in test: %s" face)
+                  )
+                 )
+               )
+              )
+             )
       (should (stringp (pearl-paren-style--annotation-color-for-distance 1)))
       (should (stringp (pearl-paren-style--annotation-color-for-distance 20)))
-      (should (stringp (pearl-paren-style--annotation-color-for-distance 30))))))
+      (should (stringp (pearl-paren-style--annotation-color-for-distance 30)))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-color-with-unspecified-face ()
   "Test annotation color calculation throws error with unspecified face."
@@ -1783,19 +2430,34 @@
                (lambda (face attribute &optional frame inherit)
                  (cond
                   ((eq face 'font-lock-comment-face)
-                   'unspecified)
+                   'unspecified
+                  )
                   ((eq face 'default)
-                   "#242424")
+                   "#242424"
+                  )
                   (t
-                   (error "Unexpected face in test: %s" face))))))
+                   (error "Unexpected face in test: %s" face)
+                  )
+                 )
+               )
+              )
+             )
       ;; Use condition-case to capture and verify error
       (condition-case err
           (progn
             (pearl-paren-style--annotation-color-for-distance 1)
-            (ert-fail "Expected error but none was thrown"))
+            (ert-fail "Expected error but none was thrown")
+          )
         (error
          (should (string-match-p "font-lock-comment-face foreground color is unspecified"
-                                 (error-message-string err))))))))
+                                 (error-message-string err)
+                 )
+         )
+        )
+      )
+    )
+  )
+)
 
 ;;;; Boundary condition tests
 
@@ -1809,7 +2471,12 @@
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
           ;; Should not leave blank lines from deleted paren lines
-          (should-not (string-match-p "\n\n" result)))))))
+          (should-not (string-match-p "\n\n" result))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-boundary-buffer-starting-with-paren ()
   "Boundary handling: buffer starting with closing parenthesis."
@@ -1818,7 +2485,10 @@
     (let ((original ")\n(foo)"))
       (insert original)
       (pearl-paren-style--detect)
-      (should t))))  ; Just ensure no crash
+      (should t)
+    )
+  )
+)  ; Just ensure no crash
 
 (ert-deftest test-pearl-paren-style-boundary-whitespace-variations ()
   "Boundary handling: various whitespace characters and combinations."
@@ -1828,14 +2498,18 @@
     (let ((original "(foo\n\t(bar)\n\t)")
           (expected-compact "(foo\n\t(bar))\n")
           (expected-dangling "(foo\n\t(bar)\n)\n")  ; Fixed: tab removed, ) at column 0
-          )
+         )
       ;; Test compact conversion
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected-compact))
-          (should (string= result expected-compact))))
+                            original result expected-compact
+                   )
+                  )
+          (should (string= result expected-compact))
+        )
+      )
       ;; Test dangling conversion
       (erase-buffer)
       (insert original)
@@ -1843,13 +2517,22 @@
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s\nResult length: %d, Expected length: %d"
                             original result expected-dangling
-                            (length result) (length expected-dangling)))
+                            (length result) (length expected-dangling)
+                   )
+                  )
           ;; The dangling conversion removes the tab before the closing paren
           ;; Result is "(foo\n\t(bar)\n)" which is 13 chars, expected is "(foo\n\t(bar)\n)\n" which is 14 chars
           ;; The difference is the trailing newline. Let's check without trailing newline
           (let ((result-trimmed (replace-regexp-in-string "\n\\'" "" result))
-                (expected-trimmed (replace-regexp-in-string "\n\\'" "" expected-dangling)))
-            (should (string= result-trimmed expected-trimmed))))))))
+                (expected-trimmed (replace-regexp-in-string "\n\\'" "" expected-dangling))
+               )
+            (should (string= result-trimmed expected-trimmed))
+          )
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-boundary-buffer-boundaries ()
   "Boundary handling: edge cases at buffer boundaries."
@@ -1857,23 +2540,34 @@
     (emacs-lisp-mode)
     ;; Test with closing paren at very beginning of buffer
     (let ((original ")\n(foo)")
-          (expected ")\n(foo)"))
+          (expected ")\n(foo)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
-          (should (string= result expected))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
 
   (with-temp-buffer
     (emacs-lisp-mode)
     ;; Test with only closing parens
     (let ((original ")))))")
-          (expected ")))))"))
+          (expected ")))))")
+         )
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s" original result))
-          (should (string= result expected)))))))
+          (should (string= result expected))
+        )
+      )
+    )
+  )
+)
 
 ;;;; Performance tests
 
@@ -1883,83 +2577,119 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((depth 200)
-          (code ""))
+          (code "")
+         )
       (dotimes (i depth)
-        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
+        (setq code (concat code "(level-" (number-to-string i) "\n  "))
+      )
       (setq code (concat code "(innermost)"))
       (dotimes (i depth)
-        (setq code (concat code "\n  )")))
+        (setq code (concat code "\n  )"))
+      )
       (insert code)
       (let ((start-time (current-time)))
         (pearl-paren-style--to-dangling)
-        (should (<= (float-time (time-since start-time)) 1.0)))))
+        (should (<= (float-time (time-since start-time)) 1.0))
+      )
+    )
+  )
 
   ;; Depth 100 test
   (with-temp-buffer
     (emacs-lisp-mode)
     (let* ((depth 100)
            (original "")
-           (expected-lines (+ 2 depth)))
+           (expected-lines (+ 2 depth))
+          )
       (dotimes (i depth)
-        (setq original (concat original "(level-" (number-to-string i) "\n  ")))
+        (setq original (concat original "(level-" (number-to-string i) "\n  "))
+      )
       (setq original (concat original "(innermost)"))
       (dotimes (i depth)
-        (setq original (concat original "\n  )")))
+        (setq original (concat original "\n  )"))
+      )
       (insert original)
       (let ((start-time (current-time)))
         (pearl-paren-style--to-dangling)
-        (should (<= (float-time (time-since start-time)) 1.0))))))
+        (should (<= (float-time (time-since start-time)) 1.0))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-perf-deep-nesting ()
   "Performance test: deep nesting completes in reasonable time."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((depth 200)
-          (code ""))
+          (code "")
+         )
       (dotimes (i depth)
-        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
+        (setq code (concat code "(level-" (number-to-string i) "\n  "))
+      )
       (setq code (concat code "(innermost)"))
       (dotimes (i depth)
-        (setq code (concat code "\n  )")))
+        (setq code (concat code "\n  )"))
+      )
       (insert code)
       (let ((start-time (current-time)))
         (pearl-paren-style--to-dangling)
         (let ((elapsed (float-time (time-since start-time))))
-          (should (<= elapsed 1.0)))))))
+          (should (<= elapsed 1.0))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-perf-deep-nested-indent ()
   "Performance test: deep nested dangling aligns with opener."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n    (c\n      (d\n        (foo (bar)))))  ;; comment\n    )")
-          (expected "(a\n  (b\n    (c\n      (d\n        (foo (bar))\n      )\n    )\n  )  ;; comment\n)"))
+          (expected "(a\n  (b\n    (c\n      (d\n        (foo (bar))\n      )\n    )\n  )  ;; comment\n)")
+         )
       (insert original)
       (pearl-paren-style--to-dangling)
       (let ((result (buffer-string)))
         (ert-info ((format "Original:\n%s\nResult:\n%s\nExpected:\n%s"
-                            original result expected))
+                            original result expected
+                   )
+                  )
           (should (string= result expected))
           ;; Verify outermost ) aligns with (a at column 0
           (goto-char (point-max))
           (search-backward ")")
           (beginning-of-line)
-          (should (looking-at ")$")))))))
+          (should (looking-at ")$"))
+        )
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-perf-deep-nesting-with-comments ()
   "Performance test: deep nesting with comments at each level."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((depth 50)
-          (code ""))
+          (code "")
+         )
       (dotimes (i depth)
-        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
+        (setq code (concat code "(level-" (number-to-string i) "\n  "))
+      )
       (setq code (concat code "(innermost)"))
       (dotimes (i depth)
-        (setq code (concat code "\n  )  ; comment " (number-to-string i))))
+        (setq code (concat code "\n  )  ; comment " (number-to-string i)))
+      )
       (insert code)
       (let ((start-time (current-time)))
         (pearl-paren-style--to-dangling)
-        (should (<= (float-time (time-since start-time)) 1.0))))))
+        (should (<= (float-time (time-since start-time)) 1.0))
+      )
+    )
+  )
+)
 
 ;;;; Annotation-comment conversion tests
 
@@ -1983,16 +2713,21 @@
       (should (string-match-p "(defun test ()" (buffer-string)))
       (should (string-match-p "(when t" (buffer-string)))
       ;; Verify comment format
-      (should (string-match-p ")  ;; ← " (buffer-string))))))
+      (should (string-match-p ")  ;; ← " (buffer-string)))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-to-annotation-basic ()
   "Basic comment to annotation conversion."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations t))
-      ;; Create code with annotation comments
-      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )  ;; ← 3:4 (when t\n)  ;; ← 0:0 (defun test ()\n")
-      ;; Convert to annotations
+      ;; 先生成 dangling + annotation，再转成 comment，再转回来
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      (pearl-paren-style-annotations-to-comments)
+      ;; 此时 comment 格式由实现保证正确
       (pearl-paren-style-comments-to-annotations)
       ;; Verify overlays created
       (should (> (length pearl-paren-style--annotation-overlays) 0))
@@ -2002,14 +2737,18 @@
       (should (string-match-p "(defun test ()" (buffer-string)))
       (should (string-match-p "(when t" (buffer-string)))
       ;; Verify no extra spaces
-      (should (string-match-p ")\n)" (buffer-string))))))
+      (should (string-match-p ")\n)" (buffer-string)))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-roundtrip ()
   "Roundtrip: annotation → comment → annotation."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations t)
-          (original-content nil))
+          (original-content nil)
+         )
       ;; Create dangling style
       (insert "(defun test ()\n  (let ((x 1))\n    (when x\n      (print x)\n    )\n  )\n)")
       (setq original-content (buffer-string))
@@ -2017,33 +2756,44 @@
       ;; Convert to comments
       (pearl-paren-style-annotations-to-comments)
       (let ((after-comment (buffer-string)))
-        ;; Verify comment format
-        (should (string-match-p ")  ;; ← " after-comment))
+        ;; Verify comment format (with end marker)
+        (should (string-match-p ")  ;; ← [0-9]+:[0-9]+ .*⟩" after-comment))
         ;; Convert back to annotations
         (pearl-paren-style-comments-to-annotations)
         ;; Verify annotations restored
         (should (> (length pearl-paren-style--annotation-overlays) 0))
         ;; Convert back to comments again for comparison
         (pearl-paren-style-annotations-to-comments)
-        (should (string= (buffer-string) after-comment))))))
+        (should (string= (buffer-string) after-comment))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-roundtrip ()
   "Roundtrip: comment → annotation → comment."
   (with-temp-buffer
     (emacs-lisp-mode)
-    (let ((pearl-paren-style-show-annotations t)
-          (original-comment "(defun test ()\n  (let ((x 1))\n    (when x\n      (print x)\n    )  ;; ← 3:4 (when x\n  )  ;; ← 2:2 (let ((x 1))\n)  ;; ← 1:0 (defun test ()\n"))
-      (insert original-comment)
-      ;; Convert to annotations
-      (pearl-paren-style-comments-to-annotations)
-      ;; Verify overlays created
-      (should (> (length pearl-paren-style--annotation-overlays) 0))
-      ;; Verify comments removed
-      (should-not (string-match-p ";; ← " (buffer-string)))
-      ;; Convert back to comments
+    (let ((pearl-paren-style-show-annotations t))
+      ;; 生成 dangling + annotation，转成 comment，记录结果
+      (insert "(defun test ()\n  (let ((x 1))\n    (when x\n      (print x)\n    )\n  )\n)")
+      (pearl-paren-style--to-dangling)
       (pearl-paren-style-annotations-to-comments)
-      ;; Verify original comment content restored
-      (should (string= (buffer-string) original-comment)))))
+      (let ((original-comment (buffer-string)))
+        ;; 转成 annotation
+        (pearl-paren-style-comments-to-annotations)
+        ;; Verify overlays created
+        (should (> (length pearl-paren-style--annotation-overlays) 0))
+        ;; Verify comments removed
+        (should-not (string-match-p ";; ← " (buffer-string)))
+        ;; 转回 comment
+        (pearl-paren-style-annotations-to-comments)
+        ;; Verify original comment content restored
+        (should (string= (buffer-string) original-comment))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-annotation-idempotent ()
   "Multiple annotation-to-comment calls are idempotent."
@@ -2060,21 +2810,32 @@
         (should (string= (buffer-string) first-result))
         ;; Third conversion
         (pearl-paren-style-annotations-to-comments)
-        (should (string= (buffer-string) first-result))))))
+        (should (string= (buffer-string) first-result))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-comment-idempotent ()
   "Multiple comment-to-annotation calls are idempotent."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations t))
-      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )  ;; ← 3:4 (when t\n)  ;; ← 0:0 (defun test (\n")
+      ;; 生成 dangling + annotation，转成 comment
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
+      (pearl-paren-style-annotations-to-comments)
       ;; First conversion
       (pearl-paren-style-comments-to-annotations)
       (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
         ;; Second conversion should be idempotent (no change)
         (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
         ;; Overlay count should remain the same
-        (should (= (length pearl-paren-style--annotation-overlays) overlay-count))))))
+        (should (= (length pearl-paren-style--annotation-overlays) overlay-count))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-no-annotation-residue ()
   "No annotation overlays remain after conversion to comments."
@@ -2086,23 +2847,32 @@
       (should (> (length pearl-paren-style--annotation-overlays) 0))
       (pearl-paren-style-annotations-to-comments)
       (should (null pearl-paren-style--annotation-overlays))
-      ;; Also verify no change hooks remain
-      (should (null pearl-paren-style--annotation-debounce-timer)))))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-no-comment-residue ()
   "No comment text remains after conversion to annotations."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations t))
-      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )  ;; ← 3:4 (when t\n)  ;; ← 0:0 (defun test (\n")
-      ;; Convert to annotations
-      (pearl-paren-style-comments-to-annotations)
-      ;; Verify no comment text remains
-      (should-not (string-match-p ";; ← " (buffer-string)))
-      ;; Convert back to comments to verify complete removal
+      ;; 生成 dangling + annotation，转成 comment
+      (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
+      (pearl-paren-style--to-dangling)
       (pearl-paren-style-annotations-to-comments)
-      ;; Should have the original comment text
-      (should (string-match-p ";; ← " (buffer-string))))))
+      (let ((comment-text (buffer-string)))
+        ;; Convert to annotations
+        (pearl-paren-style-comments-to-annotations)
+        ;; Verify no comment text remains
+        (should-not (string-match-p ";; ← " (buffer-string)))
+        ;; Convert back to comments to verify complete removal
+        (pearl-paren-style-annotations-to-comments)
+        ;; Should have the original comment text
+        (should (string= (buffer-string) comment-text))
+      )
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-mixed-comments-handling ()
   "Handle existing comments mixed with annotations."
@@ -2110,7 +2880,7 @@
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations t))
       ;; Create code with both regular comments and annotation comments
-      (insert "(defun test ()\n  (when t  ; regular comment\n    (print \"hello\")\n  )  ;; ← 3:4 (when t  ; regular comment\n)  ;; ← 0:0 (defun test ()\n")
+      (insert "(defun test ()\n  (when t  ; regular comment\n    (print \"hello\")\n  )  ;; ← 3:4 (when t  ; regular comment⟩\n)  ;; ← 0:0 (defun test ()⟩\n")
       ;; Convert to annotations
       (pearl-paren-style-comments-to-annotations)
       ;; Verify regular comments preserved
@@ -2121,7 +2891,10 @@
       (pearl-paren-style-annotations-to-comments)
       ;; Verify both types of comments present
       (should (string-match-p "; regular comment" (buffer-string)))
-      (should (string-match-p ";; ← " (buffer-string))))))
+      (should (string-match-p ";; ← " (buffer-string)))
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-conversion-empty-buffer ()
   "Handle empty buffer in conversion functions."
@@ -2130,7 +2903,10 @@
     (let ((pearl-paren-style-show-annotations t))
       ;; Should not error on empty buffer
       (should-error (pearl-paren-style-annotations-to-comments) :type 'user-error)
-      (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error))))
+      (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
+    )
+  )
+)
 
 (ert-deftest test-pearl-paren-style-conversion-compact-style ()
   "Handle compact style buffer in conversion functions."
@@ -2141,7 +2917,100 @@
       ;; Should error because no annotations in compact style
       (should-error (pearl-paren-style-annotations-to-comments) :type 'user-error)
       ;; Should error because no annotation comments
-      (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error))))
+      (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-preserve-user-comment-during-conversion ()
+  "Test that user comments are not lost during annotation-comment roundtrips."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t)
+          (original "(defun test ()\n  (when t\n    (print \"hello\")\n  ) ; user comment\n)")
+         )
+      (insert original)
+      (pearl-paren-style--to-dangling)
+      ;; 1. 转换为持久化注释 (此时行尾应同时存在 annotation 和 user comment)
+      (pearl-paren-style-annotations-to-comments)
+      (should (string-match-p "; user comment" (buffer-string)))
+      (should (string-match-p (regexp-quote pearl-paren-style-annotation-comment-prefix) (buffer-string)))
+
+      ;; 2. 转回 Overlay 形式 (此时 annotation 文本应消失，user comment 应保留)
+      (pearl-paren-style-comments-to-annotations)
+      (should (string-match-p "; user comment" (buffer-string)))
+      (should-not (string-match-p (regexp-quote pearl-paren-style-annotation-comment-prefix) (buffer-string)))
+
+      ;; 3. 转回 Compact 风格 (验证 user comment 依然稳固)
+      (pearl-paren-style-compact)
+      (goto-char (point-min))
+      (should (re-search-forward "hello\"))  ; user comment" nil t))
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-annotation-comment-with-trailing-user-comment ()
+  "Annotation-to-comment preserves original trailing comment with correct spacing."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; dangling style with trailing user comment on outermost paren
+      (insert "(defun test ()\n  (let ((x 1))\n    (foo)\n  )\n)  ; user comment\n")
+      (pearl-paren-style--update-annotations-full)
+      ;; annotation->comment
+      (pearl-paren-style-annotations-to-comments)
+      (let ((after-to-comment (buffer-string)))
+        ;; The outermost ) line should have annotation comment AND user comment
+        ;; with exactly two spaces between them
+        (should (string-match-p ")  ;; ← [0-9]+:[0-9]+ .*⟩  ; user comment"
+                                 after-to-comment
+                )
+        )
+        ;; comment->annotation
+        (pearl-paren-style-comments-to-annotations)
+        (let ((after-to-annotation (buffer-string)))
+          ;; annotation comment text should be gone
+          (should-not (string-match-p ";; ← " after-to-annotation))
+          ;; user comment should remain, with two spaces before it
+          (should (string-match-p ")  ; user comment" after-to-annotation))
+          ;; annotation overlay should exist
+          (should (> (length pearl-paren-style--annotation-overlays) 0))
+          ;; annotation overlay text should NOT contain user comment
+          (dolist (ov pearl-paren-style--annotation-overlays)
+            (let ((text (overlay-get ov 'after-string)))
+              (when text
+                (should-not (string-match-p "user comment" text))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+(ert-deftest test-pearl-paren-style-annotation-text-no-trailing-space ()
+  "Annotation text from truncated open-text should not have trailing spaces in comment."
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (let ((pearl-paren-style-show-annotations t))
+      ;; Use a short function name so truncation adds trailing space
+      (insert "(defun f ()\n  (g))\n")
+      (pearl-paren-style--update-annotations-full)
+      (pearl-paren-style-annotations-to-comments)
+      (let ((result (buffer-string)))
+        ;; The annotation comment should not have trailing spaces before EOL or next comment
+        (goto-char (point-min))
+        (while (re-search-forward (regexp-quote pearl-paren-style-annotation-comment-prefix) nil t)
+          (let ((line (buffer-substring (line-beginning-position) (line-end-position))))
+            ;; No double-space at end of annotation text (before EOL)
+            (should-not (string-match-p ";; ← .*  $" line))
+          )
+        )
+      )
+    )
+  )
+)
 
 (provide 'test-pearl-paren-style)
 ;;; test-pearl-paren-style.el ends here
