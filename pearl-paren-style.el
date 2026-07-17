@@ -392,9 +392,11 @@ _LEN is the length of the change (unused)."
             (setq region-changed t)))
 
         (when region-changed
-          ;; If the change is massive (e.g. git checkout), do a full update
+          ;; If the change is massive (e.g. git checkout), check style first
           (if (> (- end beg) 1000)
-              (pearl-paren-style--update-annotations-full)
+              (if (eq (pearl-paren-style--detect) 'compact)
+                  (pearl-paren-style--disable-annotations)
+                (pearl-paren-style--update-annotations-full))
             (pearl-paren-style--schedule-debounced-update
              (max (point-min) (- beg 100))
              (min (point-max) (+ end 100)))))))))
