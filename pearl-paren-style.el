@@ -73,12 +73,6 @@ annotations showing the corresponding opening parenthesis location."
   :group 'pearl-paren-style
 )
 
-(defcustom pearl-paren-style-annotation-delay 0.1
-  "Delay in seconds before updating annotations after buffer changes."
-  :type 'number
-  :group 'pearl-paren-style
-)
-
 (defcustom pearl-paren-style-annotation-comment-prefix ";; ← "
   "Prefix for annotation comments when converting annotations to comments."
   :type 'string
@@ -88,8 +82,6 @@ annotations showing the corresponding opening parenthesis location."
 (defvar-local pearl-paren-style--annotation-overlays nil
   "List of overlays used for annotation display."
 )
-
-
 
 (defun pearl-paren-style--in-string-or-comment-p (&optional pos)
   "Return non-nil if point is inside a string or comment.
