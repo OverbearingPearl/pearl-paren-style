@@ -70,13 +70,13 @@ annotations showing the corresponding opening parenthesis location."
   :group 'pearl-paren-style)
 
 (defconst pearl-paren-style--annotation-arrow " ← "
-  "Arrow marker used in annotation overlays and comments. Internal protocol.")
+  "Arrow marker used in annotation overlays and comments.  Internal protocol.")
 
 (defconst pearl-paren-style--annotation-end "⟩"
-  "End marker for annotation text. Internal protocol.")
+  "End marker for annotation text.  Internal protocol.")
 
 (defconst pearl-paren-style--annotation-comment-prefix ";; ← "
-  "Full prefix for annotation comments. Internal protocol.")
+  "Full prefix for annotation comments.  Internal protocol.")
 
 (defvar-local pearl-paren-style--annotation-overlays nil
   "List of overlays used for annotation display.")
