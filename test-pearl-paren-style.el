@@ -275,9 +275,7 @@
             (detected-after (pearl-paren-style--detect))
            )
         (ert-info ((format "Initial detect: %s\nAfter toggle detect: %s" initial-detect detected-after))
-          ;; Key assertion: after toggle should detect as compact
           (should (eq detected-after 'compact))
-          ;; Verify content actually changed (dangling->compact)
           (should-not (string= after-toggle original))
         )
       )
@@ -3117,7 +3115,6 @@
                        )
                       )
             )
-            ;; Convert to annotation
             (pearl-paren-style-comments-to-annotations)
             (let ((after-to-annotation (buffer-string))
                   (overlay-count (length pearl-paren-style--annotation-overlays))

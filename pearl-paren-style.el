@@ -129,7 +129,7 @@ If POS is provided, check at that position instead of current point."
     (let ((line-end (line-end-position)))
       (when (search-forward ";" line-end t)
         ;; Verify it's really a comment, not inside string or character literal
-        (nth 4 (syntax-ppss))  ; returns non-nil if in comment
+        (nth 4 (syntax-ppss))
       )
     )
   )
@@ -439,7 +439,6 @@ TARGET-COL is the target column for indentation."
   (let* ((end-of-line (line-end-position))
          comment-text
         )
-    ;; Extract comment if exists
     (save-excursion
       (goto-char closing-pos)
       (forward-char)
@@ -453,7 +452,6 @@ TARGET-COL is the target column for indentation."
         )
       )
     )
-    ;; Move paren
     (save-excursion
       (goto-char closing-pos)
       (delete-char 1)
@@ -724,10 +722,8 @@ CLOSING-POS is the position of the closing parenthesis."
       )
     )
 
-    ;; Delete current line
     (delete-region line-start (line-beginning-position 2))
 
-    ;; Insert into previous line
     (save-excursion
       (goto-char line-start)
       (forward-line -1)
