@@ -206,6 +206,10 @@ Returns t if conversion was performed, nil otherwise."
 
 (defun pearl-paren-style--comment-to-annotation (closing-pos comment-text)
   "Convert comment text back to annotation overlay at CLOSING-POS.
+CLOSING-POS is the position of the closing parenthesis.
+COMMENT-TEXT is the text of the annotation comment containing:
+  - The line number and column of opening parenthesis
+  - The opening parenthesis text
 Returns the created overlay or nil."
   (when (and pearl-paren-style-show-annotations
              (not (pearl-paren-style--in-string-or-comment-p closing-pos)))
