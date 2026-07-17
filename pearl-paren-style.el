@@ -147,27 +147,23 @@ Returns (STRING . LINE-DISTANCE) where LINE-DISTANCE is line difference, or nil.
   "Calculate annotation color based on LINE-DISTANCE (lines from opening paren).
 Closer distance = blend more toward background (less visible)."
   (let* ((frame (selected-frame))
-         ;; Use font-lock-comment-face color directly
          (base-color (face-attribute 'font-lock-comment-face :foreground frame))
-         (bg-color (face-attribute 'default :background frame))
-         (threshold 20.0)
-         (ratio (min 1.0 (/ (float line-distance) threshold)))
-         (base-rgb (color-name-to-rgb base-color))
-         (bg-rgb (color-name-to-rgb bg-color)))
-
-    ;; Validate color validity - if invalid, crash directly (following trust boundary)
+         (bg-color (face-attribute 'default :background frame)))
     (when (eq base-color 'unspecified)
       (error "font-lock-comment-face foreground color is unspecified"))
     (when (eq bg-color 'unspecified)
       (error "Default face background color is unspecified"))
-
-    (if (and base-rgb bg-rgb)
-        (apply #'color-rgb-to-hex
-               (cl-mapcar (lambda (b g)
-                            (+ (* b ratio) (* g (- 1.0 ratio))))
-                          base-rgb bg-rgb))
-      ;; If color conversion fails, use base color
-      base-color)))
+    (let* ((threshold 20.0)
+           (ratio (min 1.0 (/ (float line-distance) threshold)))
+           (base-rgb (color-name-to-rgb base-color))
+           (bg-rgb (color-name-to-rgb bg-color)))
+      (cl-assert (and base-rgb bg-rgb)
+                 nil "pearl-paren-style: failed to parse colors: base=%s bg=%s"
+                 base-color bg-color)
+      (apply #'color-rgb-to-hex
+             (cl-mapcar (lambda (b g)
+                          (+ (* b ratio) (* g (- 1.0 ratio))))
+                        base-rgb bg-rgb)))))
 
 (defun pearl-paren-style--annotation-to-comment (closing-pos)
   "Convert annotation at CLOSING-POS to comment text.
@@ -668,8 +664,7 @@ FILES is a list of file paths."
 (defun pearl-paren-style-compact ()
   "Convert to compact style (closing parens on same line)."
   (interactive)
-  (pearl-paren-style--to-compact)
-  (message "Converted to compact style"))
+  (pearl-paren-style--to-compact))
 
 ;;;###autoload
 (defun pearl-paren-style-dangling ()

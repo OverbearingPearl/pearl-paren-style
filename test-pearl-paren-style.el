@@ -566,7 +566,7 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(outer\n  (middle\n    (inner\n      )\n    )  ; end comment\n  )\n)")
-          (expected "(outer\n  (middle\n    (inner)))  ; end comment\n"))
+          (expected "(outer\n  (middle\n    (inner))  ; end comment\n  )\n)"))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
@@ -590,7 +590,8 @@
                     (backward-char)
                     (unless (pearl-paren-style--in-string-or-comment-p)
                       (cl-incf count))))
-                (should (> count 1))))))))))
+                (should (> count 1)))))
+          (should (string= result expected)))))))
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-with-comment ()
   "Compact conversion handles ) in comment correctly."
@@ -697,7 +698,7 @@
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((original "(a\n  (b\n    (c\n      )\n    )  ; end c\n  )  ; end b\n)  ; end a\n")
-          (expected-compact "(a\n  (b\n    (c)))  ; end c\n)  ; end a\n"))
+          (expected-compact "(a\n  (b\n    (c))  ; end c\n  )  ; end b\n)  ; end a\n"))
       (insert original)
       (pearl-paren-style--to-compact)
       (let ((result (buffer-string)))
@@ -706,7 +707,9 @@
           ;; The innermost comment should merge with its code line
           (should (string-match-p "; end c" result))
           ;; The outer comments should remain on their own lines
-          (should (string-match-p "; end a" result)))))))
+          (should (string-match-p "; end b" result))
+          (should (string-match-p "; end a" result))
+          (should (string= result expected-compact)))))))
 
 (ert-deftest test-pearl-paren-style-convert-to-compact-removes-blank-lines ()
   "Compact conversion removes blank lines from deleted parenthesis lines."
