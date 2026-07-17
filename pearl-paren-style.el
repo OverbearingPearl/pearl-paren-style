@@ -273,7 +273,7 @@ Returns the overlay or nil if no annotation needed."
   "Remove all annotation overlays."
   (mapc 'delete-overlay pearl-paren-style--annotation-overlays)
   (setq pearl-paren-style--annotation-overlays nil)
-  ;; 清理定时器
+  ;; Clear timer
   (when pearl-paren-style--annotation-debounce-timer
     (cancel-timer pearl-paren-style--annotation-debounce-timer)
     (setq pearl-paren-style--annotation-debounce-timer nil)))
@@ -905,10 +905,10 @@ outside of Emacs sessions."
   (interactive)
   (unless pearl-paren-style-show-annotations
     (user-error "Annotations are disabled. Enable with `pearl-paren-style-show-annotations'"))
-  ;; 区分三种情况：
-  ;; 1. 有annotation overlay - 正常转换
-  ;; 2. 没有overlay但有annotation comment - 幂等调用
-  ;; 3. 既没有overlay也没有comment - 错误
+  ;; Handle three cases:
+  ;; 1. Has annotation overlay - normal conversion
+  ;; 2. No overlay but has annotation comment - idempotent call
+  ;; 3. Neither overlay nor comment - error
   (cond
    ;; 情况1：有annotation overlay
    ((> (length pearl-paren-style--annotation-overlays) 0)
@@ -963,7 +963,7 @@ This restores interactive annotations from permanent comments."
             (when ov
               (push ov pearl-paren-style--annotation-overlays)
               (cl-incf converted)))))
-      ;; 转换后删除注释文本
+      ;; Remove comment text after conversion
       (save-excursion
         (goto-char (point-min))
         (while (re-search-forward (regexp-quote pearl-paren-style-annotation-comment-prefix) nil t)
