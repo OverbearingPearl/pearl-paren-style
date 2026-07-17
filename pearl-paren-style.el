@@ -400,14 +400,6 @@ Returns the overlay or nil if no annotation needed."
   )
 )
 
-
-
-
-
-
-
-
-
 (defun pearl-paren-style--dangle-target-indent (open-pos)
   "Calculate target indentation column for OPEN-POS.
 OPEN-POS is the position of the opening parenthesis."
