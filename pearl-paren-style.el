@@ -316,8 +316,15 @@ END is the end position of the region."
       ;; 2. Update affected overlays
       (dolist (ov affected-overlays)
         (let ((closing-pos (overlay-start ov)))
-          (unless (pearl-paren-style--in-string-or-comment-p closing-pos)
-            (let ((result (pearl-paren-style--get-annotation closing-pos)))
+          ;; If overlay is no longer at a ')', delete it
+          (if (or (not closing-pos)
+                  (not (eq (char-after closing-pos) ?\))))
+              (progn
+                (delete-overlay ov)
+                (setq pearl-paren-style--annotation-overlays
+                      (delq ov pearl-paren-style--annotation-overlays)))
+            (unless (pearl-paren-style--in-string-or-comment-p closing-pos)
+              (let ((result (pearl-paren-style--get-annotation closing-pos)))
               (if result
                   (let* ((annotation (car result))
                          (line-distance (cdr result))
@@ -327,7 +334,7 @@ END is the end position of the region."
                 ;; If no annotation, delete overlay
                 (delete-overlay ov)
                 (setq pearl-paren-style--annotation-overlays
-                      (delq ov pearl-paren-style--annotation-overlays)))))))
+                      (delq ov pearl-paren-style--annotation-overlays)))))))))
 
     ;; 3. Rescan affected region for new overlays
     (save-excursion
@@ -342,7 +349,7 @@ END is the end position of the region."
                                  pearl-paren-style--annotation-overlays))
               (let ((ov (pearl-paren-style--create-annotation-overlay pos)))
                 (when ov
-                  (push ov pearl-paren-style--annotation-overlays)))))))))))
+                  (push ov pearl-paren-style--annotation-overlays))))))))))
 
 (defun pearl-paren-style--schedule-debounced-update (beg end)
   "Schedule annotation update with debounce for region BEG to END.
@@ -385,9 +392,12 @@ _LEN is the length of the change (unused)."
             (setq region-changed t)))
 
         (when region-changed
-          (pearl-paren-style--schedule-debounced-update
-           (max (point-min) (- beg 100)) ; Expand region for safety
-           (min (point-max) (+ end 100))))))))
+          ;; If the change is massive (e.g. git checkout), do a full update
+          (if (> (- end beg) 1000)
+              (pearl-paren-style--update-annotations-full)
+            (pearl-paren-style--schedule-debounced-update
+             (max (point-min) (- beg 100))
+             (min (point-max) (+ end 100)))))))))
 
 (defun pearl-paren-style--setup-change-hook ()
   "Setup change hook for annotation updates."
@@ -925,10 +935,10 @@ outside of Emacs sessions."
       ;; Clear overlays after conversion
       (pearl-paren-style--clear-annotations)
       (message "Converted %d annotation(s) to comments" converted)))
-   ;; 情况2：没有overlay但有annotation comment - 幂等调用
+   ;; Case 2: No overlays but annotation comments exist - idempotent call
    ((pearl-paren-style--find-annotation-comments)
-    (message "Annotations already converted to comments"))
-   ;; 情况3：既没有overlay也没有comment - 错误
+    (message "Annotations are already comments"))
+   ;; Case 3: Neither overlays nor comments - error
    (t
     (user-error "No annotations found to convert"))))
 
