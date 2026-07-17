@@ -1132,11 +1132,11 @@ This restores interactive annotations from permanent comments."
                     (let ((spaces-start (point)))
                       (skip-chars-forward " \t")
                       (when (looking-at (regexp-quote pearl-paren-style--annotation-comment-prefix))
-                        ;; 精确匹配 annotation 详情部分：
-                        ;; 1. 前缀 (已转义)
-                        ;; 2. 坐标 (行:列)
-                        ;; 3. 一个空格
-                        ;; 4. 详情文本（直到遇到 ⟩）
+                        ;; Exact match for annotation detail:
+                        ;; 1. Prefix (escaped)
+                        ;; 2. Coordinates (line:col)
+                        ;; 3. One space
+                        ;; 4. Detail text (up to ⟩)
                         (let ((re (concat (regexp-quote pearl-paren-style--annotation-comment-prefix)
                                           "[0-9]+:[0-9]+ .*?"
                                           (regexp-quote pearl-paren-style--annotation-end)

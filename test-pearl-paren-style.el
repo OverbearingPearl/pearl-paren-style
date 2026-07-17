@@ -641,57 +641,35 @@
     (let ((beg (region-beginning))
           (end (region-end))
          )
-      ;; Debug: print region content
-      (ert-info ((format "Region content: '%s'\nBeg: %d, End: %d" (buffer-substring beg end) beg end))
-        ;; This region should be balanced: (inner2\n    (deep))
-        ;; The region includes "(inner2\n    (deep))" which has balanced parentheses
-        ;; However, the region content shows "(inner2\n    (deep)" without the closing paren
-        ;; This is because the region ends at position 40, which is after the closing paren
-        ;; Let's check if the region is actually balanced
-        ;; Debug: print the actual region content with visible characters
-        (ert-info ((format "Debug region content: %S" (buffer-substring beg end)))
-          ;; The region contains "(inner2\n    (deep)\n  )" which has 1 opening and 1 closing paren
-          ;; But the debug output shows count=1, meaning unbalanced
-          ;; Let's manually check the parentheses
-          (let ((region-str (buffer-substring beg end)))
-            ;; Count parentheses in the region
-            (let ((open-count 0) (close-count 0))
-              (with-temp-buffer
-                (insert region-str)
-                (goto-char (point-min))
-                (while (not (eobp))
-                  (cond
-                   ((pearl-paren-style--in-string-or-comment-p)
-                    (forward-char)
-                   )
-                   ((= (char-after) ?\()
-                    (cl-incf open-count)
-                    (forward-char)
-                   )
-                   ((= (char-after) ?\))
-                    (cl-incf close-count)
-                    (forward-char)
-                   )
-                   (t
-                    (forward-char)
-                   )
-                  )
+      (ert-info ((format "Region content: '%s'" (buffer-substring beg end)))
+        (let ((region-str (buffer-substring beg end)))
+          ;; Count parentheses in the region
+          (let ((open-count 0) (close-count 0))
+            (with-temp-buffer
+              (insert region-str)
+              (goto-char (point-min))
+              (while (not (eobp))
+                (cond
+                 ((pearl-paren-style--in-string-or-comment-p)
+                  (forward-char)
+                 )
+                 ((= (char-after) ?\()
+                  (cl-incf open-count)
+                  (forward-char)
+                 )
+                 ((= (char-after) ?\))
+                  (cl-incf close-count)
+                  (forward-char)
+                 )
+                 (t
+                  (forward-char)
+                 )
                 )
               )
-              ;; Debug: print counts
-              (ert-info ((format "Open count: %d, Close count: %d" open-count close-count))
-                ;; The region actually has 2 opening parens and 1 closing paren
-                ;; because it includes "(inner2\n    (deep)\n  )"
-                ;; which has: (inner2 ... (deep) ... )
-                ;; So 2 openings: one for inner2, one for deep
-                ;; And 1 closing: for deep (the inner2 closing is outside the region)
-                ;; This is actually unbalanced, so the test should fail
-                ;; Let's fix the test: we should select a balanced region
-                ;; Instead, let's just accept that this region is unbalanced
-                ;; and update the test expectation
-                (should (= open-count 2))
-                (should (= close-count 1))
-              )
+            )
+            (ert-info ((format "Open count: %d, Close count: %d" open-count close-count))
+              (should (= open-count 2))
+              (should (= close-count 1))
             )
           )
           ;; Now check with the function - should return nil because unbalanced
@@ -2092,25 +2070,16 @@
       (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
       (pearl-paren-style--to-dangling)
 
-      (let ((buffer-text (buffer-string))
-            (overlay-count (length pearl-paren-style--annotation-overlays))
-            (overlay-positions (mapcar (lambda (ov) (overlay-start ov)) pearl-paren-style--annotation-overlays))
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays))
             (overlay-texts (mapcar (lambda (ov) (overlay-get ov 'after-string)) pearl-paren-style--annotation-overlays))
            )
-
-        (let ((display-str (format "Buffer after conversion:\n%s\nAnnotation overlay count: %d\nOverlay positions: %s\nAnnotation texts: %s"
-                                   buffer-text overlay-count overlay-positions overlay-texts
-                           )
-              )
-             )
-          (ert-info ((format "%s" display-str))
-            (should (pearl-paren-style--annotation-enabled-p))
-            (should pearl-paren-style--annotation-overlays)
-            (should (= overlay-count 2))
-            ;; Check annotation text
-            (dolist (text overlay-texts)
-              (should (string-match-p "← [0-9]+:[0-9]+ " text))
-            )
+        (ert-info ((format "Annotation overlay count: %d" overlay-count))
+          (should (pearl-paren-style--annotation-enabled-p))
+          (should pearl-paren-style--annotation-overlays)
+          (should (= overlay-count 2))
+          ;; Check annotation text
+          (dolist (text overlay-texts)
+            (should (string-match-p "← [0-9]+:[0-9]+ " text))
           )
         )
       )
@@ -2200,23 +2169,10 @@
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations nil))
       (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
-      (let ((original-text (buffer-string)))
-
-        (pearl-paren-style--to-dangling)
-        (let ((dangling-text (buffer-string))
-              (overlay-count (length pearl-paren-style--annotation-overlays))
-             )
-
-          (let ((display-str (format "Initial code:\n%s\nConfiguration: pearl-paren-style-show-annotations=%s\nCode after conversion:\n%s\nAnnotation overlay count: %d"
-                                     original-text pearl-paren-style-show-annotations
-                                     dangling-text overlay-count
-                             )
-                )
-               )
-            (ert-info ((format "%s" display-str))
-              (should (= overlay-count 0))
-            )
-          )
+      (pearl-paren-style--to-dangling)
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
+        (ert-info ((format "Overlay count: %d" overlay-count))
+          (should (= overlay-count 0))
         )
       )
     )
@@ -2230,26 +2186,13 @@
     (let ((pearl-paren-style-show-annotations t))
       (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
       (pearl-paren-style--to-dangling)
-      (let ((dangling-text (buffer-string))
-            (overlay-count (length pearl-paren-style--annotation-overlays))
-           )
-
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
         (pearl-paren-style--to-compact)
-        (let ((compact-text (buffer-string))
-              (final-overlay-count (length pearl-paren-style--annotation-overlays))
-             )
-
-          (let ((display-str (format "After conversion to dangling:\n%s\nAnnotation overlay count: %d\nAfter conversion to compact:\n%s\nAnnotation overlay count: %d\nAnnotation enabled: %s"
-                                     dangling-text overlay-count
-                                     compact-text final-overlay-count (pearl-paren-style--annotation-enabled-p)
-                             )
-                )
-               )
-            (ert-info ((format "%s" display-str))
-              (should (> overlay-count 0)) ; Should have overlays
-              (should-not (pearl-paren-style--annotation-enabled-p))
-              (should (= final-overlay-count 0))
-            )
+        (let ((final-overlay-count (length pearl-paren-style--annotation-overlays)))
+          (ert-info ((format "Initial overlays: %d, Final overlays: %d" overlay-count final-overlay-count))
+            (should (> overlay-count 0)) ; Should have overlays
+            (should-not (pearl-paren-style--annotation-enabled-p))
+            (should (= final-overlay-count 0))
           )
         )
       )
@@ -2273,48 +2216,16 @@
         (goto-char closing-pos)
         (let* ((line-num (line-number-at-pos))
               (col (current-column))
-              (line-start (line-beginning-position))
-              (line-end (line-end-position))
-              (line-content (buffer-substring line-start line-end))
-              (full-display (concat (buffer-substring (point-min) line-start)
-                                    line-content
-                                    (buffer-substring line-end (point-max))
-                            )
-              )
               (result (pearl-paren-style--get-annotation closing-pos))
               (text (car result))
               (distance (cdr result))
               )
-
-          (let ((display-str (format "Test info:\nClosing parenthesis position: %d\nLine number: %d\nColumn: %d\nFull code:\n%s\nAnnotation text: %s\nDistance: %s"
-                                     closing-pos line-num col full-display text distance
-                             )
-                )
-               )
-            ;; If annotation exists, add full code with annotation
+          (ert-info ((format "Closing parenthesis position: %d, Line: %d, Column: %d" closing-pos line-num col))
+            (should (= line-num 4))
+            (should text) ; Should have annotation (different lines)
             (when text
-              (let ((full-display-with-annotation (concat (buffer-substring (point-min) line-start)
-                                                          line-content
-                                                          text
-                                                          (buffer-substring line-end (point-max))
-                                                  )
-                    )
-                   )
-                (setq display-str (concat display-str
-                                          "\n\nFull code with annotation:\n"
-                                          full-display-with-annotation
-                                  )
-                )
-              )
-            )
-
-            (ert-info ((format "%s" display-str))
-              (should (= line-num 4))
-              (should text) ; Should have annotation (different lines)
-              (when text
-                (should (string-match-p "← [0-9]+:[0-9]+ " text))
-                (should (string-match-p "when" text))
-              )
+              (should (string-match-p "← [0-9]+:[0-9]+ " text))
+              (should (string-match-p "when" text))
             )
           )
         )
@@ -2357,34 +2268,16 @@
       (insert "(defun test ()\n  (when t\n    (print \"hello\")\n  )\n)")
       (pearl-paren-style--to-dangling)
 
-      (let ((overlay-count (length pearl-paren-style--annotation-overlays))
-            (overlay-info (mapcar (lambda (ov)
-                                    (list (overlay-start ov)
-                                          (overlay-get ov 'after-string)
-                                    )
-                                  )
-                                  pearl-paren-style--annotation-overlays
-                          )
-            )
-           )
-
-        (let ((display-str (format "Annotation overlay count: %d\nOverlay info: %s"
-                                   overlay-count overlay-info
-                           )
-              )
-             )
-          (ert-info ((format "%s" display-str))
-            (should overlay-count)
-            ;; Check overlay properties
-            (dolist (info overlay-info)
-              (let ((pos (car info))
-                    (annotation (cadr info))
-                   )
-                (should annotation)
-                ;; after-string is not selectable, but we can check it exists
-                (should (stringp annotation))
-                (should (> (length annotation) 0))
-              )
+      (let ((overlay-count (length pearl-paren-style--annotation-overlays)))
+        (ert-info ((format "Overlay count: %d" overlay-count))
+          (should overlay-count)
+          ;; Check overlay properties
+          (dolist (ov pearl-paren-style--annotation-overlays)
+            (let ((annotation (overlay-get ov 'after-string)))
+              (should annotation)
+              ;; after-string is not selectable, but we can check it exists
+              (should (stringp annotation))
+              (should (> (length annotation) 0))
             )
           )
         )
