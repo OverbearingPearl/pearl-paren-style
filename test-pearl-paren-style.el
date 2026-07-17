@@ -2934,12 +2934,12 @@
       ;; 1. 转换为持久化注释 (此时行尾应同时存在 annotation 和 user comment)
       (pearl-paren-style-annotations-to-comments)
       (should (string-match-p "; user comment" (buffer-string)))
-      (should (string-match-p (regexp-quote pearl-paren-style-annotation-comment-prefix) (buffer-string)))
+      (should (string-match-p (regexp-quote pearl-paren-style--annotation-comment-prefix) (buffer-string)))
 
       ;; 2. 转回 Overlay 形式 (此时 annotation 文本应消失，user comment 应保留)
       (pearl-paren-style-comments-to-annotations)
       (should (string-match-p "; user comment" (buffer-string)))
-      (should-not (string-match-p (regexp-quote pearl-paren-style-annotation-comment-prefix) (buffer-string)))
+      (should-not (string-match-p (regexp-quote pearl-paren-style--annotation-comment-prefix) (buffer-string)))
 
       ;; 3. 转回 Compact 风格 (验证 user comment 依然稳固)
       (pearl-paren-style-compact)
@@ -3001,7 +3001,7 @@
       (let ((result (buffer-string)))
         ;; The annotation comment should not have trailing spaces before EOL or next comment
         (goto-char (point-min))
-        (while (re-search-forward (regexp-quote pearl-paren-style-annotation-comment-prefix) nil t)
+        (while (re-search-forward (regexp-quote pearl-paren-style--annotation-comment-prefix) nil t)
           (let ((line (buffer-substring (line-beginning-position) (line-end-position))))
             ;; No double-space at end of annotation text (before EOL)
             (should-not (string-match-p ";; ← .*  $" line))

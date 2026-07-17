@@ -73,10 +73,16 @@ annotations showing the corresponding opening parenthesis location."
   :group 'pearl-paren-style
 )
 
-(defcustom pearl-paren-style-annotation-comment-prefix ";; ← "
-  "Prefix for annotation comments when converting annotations to comments."
-  :type 'string
-  :group 'pearl-paren-style
+(defconst pearl-paren-style--annotation-arrow " ← "
+  "Arrow marker used in annotation overlays and comments. Internal protocol."
+)
+
+(defconst pearl-paren-style--annotation-end "⟩"
+  "End marker for annotation text. Internal protocol."
+)
+
+(defconst pearl-paren-style--annotation-comment-prefix ";; ← "
+  "Full prefix for annotation comments. Internal protocol."
 )
 
 (defvar-local pearl-paren-style--annotation-overlays nil
@@ -169,7 +175,7 @@ Returns (STRING . LINE-DISTANCE) where LINE-DISTANCE is line difference, or nil.
                              )
                   )
                  )
-              (cons (format " ← %d:%d %s⟩" open-line open-col (string-trim-right open-text))
+              (cons (format "%s%d:%d %s%s" pearl-paren-style--annotation-arrow open-line open-col (string-trim-right open-text) pearl-paren-style--annotation-end)
                     (- close-line open-line)
               )
             )
@@ -219,13 +225,17 @@ Closer distance = blend more toward background (less visible)."
   "Convert annotation at CLOSING-POS to comment text.
 Returns t if conversion was performed, nil otherwise."
   (when (and pearl-paren-style-show-annotations
-             (not (pearl-paren-style--in-string-or-comment-p closing-pos)))
+             (not (pearl-paren-style--in-string-or-comment-p closing-pos))
+        )
     (let ((result (pearl-paren-style--get-annotation closing-pos)))
       (when result
         (let* ((annotation (car result))
                (trimmed-annotation (string-trim-right annotation))
-               (comment-text (concat pearl-paren-style-annotation-comment-prefix
-                                     (substring trimmed-annotation 3))))
+               (comment-text (concat pearl-paren-style--annotation-comment-prefix
+                                     (substring trimmed-annotation (length pearl-paren-style--annotation-arrow))
+                             )
+               )
+              )
           (save-excursion
             (goto-char closing-pos)
             (forward-char 1)
@@ -233,22 +243,37 @@ Returns t if conversion was performed, nil otherwise."
                    (_ (skip-chars-forward " \t"))
                    (line-end (line-end-position))
                    (has-comment (< (point) line-end))
-                   (orig-leading-spaces (buffer-substring space-start (point))))
+                   (orig-leading-spaces (buffer-substring space-start (point)))
+                  )
               (cond
                ((and has-comment
-                     (looking-at (regexp-quote pearl-paren-style-annotation-comment-prefix)))
+                     (looking-at (regexp-quote pearl-paren-style--annotation-comment-prefix))
+                )
                 (delete-region space-start line-end)
-                (insert "  " comment-text))
+                (insert "  " comment-text)
+               )
                (has-comment
                 (let ((orig-comment (buffer-substring (point) line-end)))
                   (delete-region space-start line-end)
                   (insert "  " comment-text
                           (if (string-empty-p orig-leading-spaces) "  " orig-leading-spaces)
-                          orig-comment)))
+                          orig-comment
+                  )
+                )
+               )
                (t
                 (delete-region space-start line-end)
-                (insert "  " comment-text)))))
-          t)))))
+                (insert "  " comment-text)
+               )
+              )
+            )
+          )
+          t
+        )
+      )
+    )
+  )
+)
 
 (defun pearl-paren-style--comment-to-annotation (closing-pos comment-text)
   "Convert comment text back to annotation overlay at CLOSING-POS.
@@ -257,7 +282,7 @@ Returns the created overlay or nil."
              (not (pearl-paren-style--in-string-or-comment-p closing-pos))
         )
     ;; Parse comment text to extract annotation information
-    (when (string-match "\\([0-9]+\\):\\([0-9]+\\) \\(.*⟩\\)" comment-text)
+    (when (string-match (concat "\\([0-9]+\\):\\([0-9]+\\) \\(.*" (regexp-quote pearl-paren-style--annotation-end) "\\)") comment-text)
       (let* ((open-line (string-to-number (match-string 1 comment-text)))
              (open-col (string-to-number (match-string 2 comment-text)))
              (open-text (match-string 3 comment-text))  ; already includes ⟩
@@ -286,7 +311,7 @@ comment-text contains only the annotation detail, not trailing user comments."
     (save-excursion
       (goto-char (point-min))
       (while (and (< (point) (point-max))
-                  (re-search-forward (regexp-quote pearl-paren-style-annotation-comment-prefix)
+                  (re-search-forward (regexp-quote pearl-paren-style--annotation-comment-prefix)
                                      nil t
                   )
              )
@@ -305,10 +330,13 @@ comment-text contains only the annotation detail, not trailing user comments."
                      ;; annotation detail: "LINE:COL OPEN-TEXT⟩" possibly followed by "  ; user-comment"
                      ;; Split at "⟩" boundary
                      (annotation-text
-                      (if (string-match "\\(.*?⟩\\)" rest)
+                      (if (string-match (concat "\\(.*?" (regexp-quote pearl-paren-style--annotation-end) "\\)") rest)
                           (match-string 1 rest)
-                        rest))
-                     (comment-text annotation-text))
+                        rest
+                      )
+                     )
+                     (comment-text annotation-text)
+                    )
                 (when (not (pearl-paren-style--in-string-or-comment-p closing-pos))
                   (push (cons closing-pos comment-text) result)
                 )
@@ -1035,7 +1063,8 @@ This creates permanent comments that can be read by AI tools
 outside of Emacs sessions."
   (interactive)
   (unless pearl-paren-style-show-annotations
-    (user-error "Annotations are disabled. Enable with `pearl-paren-style-show-annotations'"))
+    (user-error "Annotations are disabled. Enable with `pearl-paren-style-show-annotations'")
+  )
   (cond
    ((> (length pearl-paren-style--annotation-overlays) 0)
     (let ((positions (sort (mapcar #'overlay-start pearl-paren-style--annotation-overlays) #'>)))
@@ -1043,12 +1072,21 @@ outside of Emacs sessions."
       (let ((converted 0))
         (dolist (closing-pos positions)
           (when (pearl-paren-style--annotation-to-comment closing-pos)
-            (cl-incf converted)))
-        (message "Converted %d annotation(s) to comments" converted))))
+            (cl-incf converted)
+          )
+        )
+        (message "Converted %d annotation(s) to comments" converted)
+      )
+    )
+   )
    ((pearl-paren-style--find-annotation-comments)
-    (message "Annotations are already comments"))
+    (message "Annotations are already comments")
+   )
    (t
-    (user-error "No annotations found to convert"))))
+    (user-error "No annotations found to convert")
+   )
+  )
+)
 
 ;;;###autoload
 (defun pearl-paren-style-comments-to-annotations ()
@@ -1079,7 +1117,7 @@ This restores interactive annotations from permanent comments."
       ;; Remove comment text after conversion
       (save-excursion
         (goto-char (point-min))
-        (while (re-search-forward (regexp-quote pearl-paren-style-annotation-comment-prefix) nil t)
+        (while (re-search-forward (regexp-quote pearl-paren-style--annotation-comment-prefix) nil t)
           (let ((comment-start (match-beginning 0)))
             (save-excursion
               (goto-char comment-start)
@@ -1093,23 +1131,36 @@ This restores interactive annotations from permanent comments."
                     (forward-char 1)
                     (let ((spaces-start (point)))
                       (skip-chars-forward " \t")
-                      (when (looking-at (regexp-quote pearl-paren-style-annotation-comment-prefix))
+                      (when (looking-at (regexp-quote pearl-paren-style--annotation-comment-prefix))
                         ;; 精确匹配 annotation 详情部分：
                         ;; 1. 前缀 (已转义)
                         ;; 2. 坐标 (行:列)
                         ;; 3. 一个空格
                         ;; 4. 详情文本（直到遇到 ⟩）
-                        (let ((re (concat (regexp-quote pearl-paren-style-annotation-comment-prefix)
-                                          "[0-9]+:[0-9]+ .*?⟩"
-                                          "\\( *;.*\\)?$")))
+                        (let ((re (concat (regexp-quote pearl-paren-style--annotation-comment-prefix)
+                                          "[0-9]+:[0-9]+ .*?"
+                                          (regexp-quote pearl-paren-style--annotation-end)
+                                          "\\( *;.*\\)?$"
+                                  )
+                              )
+                             )
                           (when (re-search-forward re (line-end-position) t)
                             (let ((trailing-comment (match-string 1)))
                               (delete-region spaces-start (point))
                               (when (and trailing-comment
-                                         (not (string-empty-p trailing-comment)))
+                                         (not (string-empty-p trailing-comment))
+                                    )
                                 (let ((trimmed (string-trim-left trailing-comment)))
-                                  (unless (string-prefix-p pearl-paren-style-annotation-comment-prefix trimmed)
-                                    (insert "  " trimmed)))))))))
+                                  (unless (string-prefix-p pearl-paren-style--annotation-comment-prefix trimmed)
+                                    (insert "  " trimmed)
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
                   )
                 )
               )
