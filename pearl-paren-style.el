@@ -63,6 +63,8 @@
 ;; 2. (Optional) M-x pearl-paren-style-annotations-to-comments
 ;;    - Makes bracket correspondence visible to AI tools during generation
 ;;    - Trade-off: increases token usage; skip if AI handles dangling style well
+;;    - Only closing parens at least `pearl-paren-style-annotation-min-distance'
+;;      lines from their opener are annotated (default 5), reducing token cost
 ;; 3. Generate/modify code with AI tools
 ;; 4. M-x pearl-paren-style-compact before committing
 ;;
@@ -93,6 +95,14 @@ annotations showing the corresponding opening parenthesis location.
 Annotations fade based on distance from the opening parenthesis
 (closer = fainter), reaching full color at 20 lines of separation."
   :type 'boolean
+  :group 'pearl-paren-style)
+
+(defcustom pearl-paren-style-annotation-min-distance 5
+  "Minimum line distance to show annotation for a closing parenthesis.
+Closing parentheses whose opening counterpart is fewer than this many
+lines away will not receive an annotation, reducing token usage when
+converting annotations to comments for AI tools."
+  :type 'integer
   :group 'pearl-paren-style)
 
 (defconst pearl-paren-style--annotation-arrow " ← "
@@ -197,7 +207,8 @@ Returns t if conversion was performed, nil otherwise."
   (when (and pearl-paren-style-show-annotations
              (not (pearl-paren-style--in-string-or-comment-p closing-pos)))
     (let ((result (pearl-paren-style--get-annotation closing-pos)))
-      (when result
+      (when (and result
+                 (>= (cdr result) pearl-paren-style-annotation-min-distance))
         (let* ((annotation (car result))
                (trimmed-annotation (string-trim-right annotation))
                (comment-text (concat pearl-paren-style--annotation-comment-prefix
@@ -288,7 +299,8 @@ Returns the overlay or nil if no annotation needed."
   (when (and pearl-paren-style-show-annotations
              (not (pearl-paren-style--in-string-or-comment-p closing-pos)))
     (let ((result (pearl-paren-style--get-annotation closing-pos)))
-      (when result
+      (when (and result
+                 (>= (cdr result) pearl-paren-style-annotation-min-distance))
         (let* ((annotation (car result))
                (line-distance (cdr result))
                (ov (make-overlay closing-pos (1+ closing-pos)))
