@@ -14,15 +14,14 @@ Lisp nesting is **implicit** in compact style. Humans read indentation, but AI t
 
 **Two audiences, two representations:**
 
-| Audience  | Needs                               | Format                                 |
-|-----------|-------------------------------------|----------------------------------------|
+| Audience | Needs | Format |
+|----------|-------|--------|
 | **Human** | Visual structure, no code pollution | Dangling style + annotations (overlay) |
-| **AI**    | Explicit structural hints in text   | Dangling style + comments (permanent)  |
+| **AI** | Explicit structural hints in text | Dangling style + comments (permanent) |
 
 Annotations are for Emacs sessions. Comments are for everywhere else — AI tools, GitHub, code review, documentation.
 
 ## The Workflow
-
 
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Compact code   │────▶│  Dangling style │────▶│  Dangling style │
@@ -37,8 +36,7 @@ Annotations are for Emacs sessions. Comments are for everywhere else — AI tool
          │                                      └─────────────────┘
          │                                               │
          └───────────────────────────────────────────────┘
-                         Convert back to compact
-
+                      Convert back to compact
 
 **Commands:**
 
@@ -50,6 +48,7 @@ Annotations are for Emacs sessions. Comments are for everywhere else — AI tool
    - Convert annotations to permanent comments
    - AI tools can read structural hints during generation
    - **Trade-off**: Increases token usage, but further reduces paren matching errors. Skip if AI already handles dangling style well.
+   - **Cost control**: Only closing parens at least `pearl-paren-style-annotation-min-distance` lines from their opener are annotated (default: 5). Nearby parens are not annotated, keeping token cost bounded.
 
 3. **AI generation**: Let AI work with separated delimiters (+ visible structure if step 2 used)
 
@@ -198,6 +197,11 @@ Existing comments are preserved during conversion:
 
 ;; Enable annotations in dangling style (default: t)
 (setq pearl-paren-style-show-annotations t)
+
+;; Minimum distance (in lines) for a closing paren to get an annotation
+;; Parens closer than this to their opener are not annotated, reducing token cost
+;; when converting annotations to comments for AI tools (default: 5)
+(setq pearl-paren-style-annotation-min-distance 5)
 ```
 
 ## License
