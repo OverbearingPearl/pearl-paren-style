@@ -22,27 +22,48 @@
 ;; - Convert between compact and dangling styles
 ;; - Annotation display for dangling style showing opening parenthesis location
 ;;   with distance-based color gradient (closer = fainter, 20 lines = full color)
-;; - Automatic annotation updates with debounced change detection
 ;; - Preserves single-line expressions like (foo)
 ;; - Handles inline and trailing comments
 ;; - Process regions, files, or Dired selections
 ;; - Validates parenthesis balance before conversion
-;; - Configurable annotation display and update delay
+;; - Convert annotations to permanent comments for AI tool compatibility
+;; - Restore annotations from comments
+;; - Comprehensive test suite
+;; - Context-aware DWIM (Do What I Mean) command
 ;;
-;; Commands:
+;; Core Commands:
 ;; - pearl-paren-style-toggle: Auto-detect and toggle style
 ;; - pearl-paren-style-compact: Force compact style
 ;; - pearl-paren-style-dangling: Force dangling style
-;; - pearl-paren-style-dwim: Context-aware conversion
-;; - Region variants: Add -region suffix
-;; - File variants: Add -files suffix
+;; - pearl-paren-style-convert: Interactive style selection
+;;
+;; Region Operations:
+;; - pearl-paren-style-compact-region: Convert region to compact style
+;; - pearl-paren-style-dangling-region: Convert region to dangling style
+;; - pearl-paren-style-toggle-region: Toggle style in region
+;; - pearl-paren-style-convert-region: Interactive style selection for region
+;;
+;; File Operations:
+;; - pearl-paren-style-compact-files: Convert files/directories to compact style
+;; - pearl-paren-style-dangling-files: Convert files/directories to dangling style
+;; - pearl-paren-style-convert-files: Interactive style selection for files
+;;
+;; Annotation and Comment Conversion:
+;; - pearl-paren-style-annotations-to-comments: Convert overlays to permanent comments
+;; - pearl-paren-style-comments-to-annotations: Restore overlays from comments
+;;
+;; Smart Operations:
+;; - pearl-paren-style-dwim: Context-aware conversion (region/files/buffer)
+;;
+;; Testing:
+;; - pearl-paren-style-run-tests: Run the full test suite
 ;;
 ;; Suggested workflow for AI coding:
 ;; 1. M-x pearl-paren-style-dangling
 ;; 2. Generate/modify code with AI tools
 ;; 3. M-x pearl-paren-style-compact before committing
 ;;
-;; See README.md for detailed examples and configuration.
+;; For detailed examples and configuration, see README.md.
 
 ;;; Code:
 
@@ -65,7 +86,9 @@
 (defcustom pearl-paren-style-show-annotations t
   "Whether to show annotations in dangling style.
 When non-nil, closing parentheses in dangling style will display
-annotations showing the corresponding opening parenthesis location."
+annotations showing the corresponding opening parenthesis location.
+Annotations fade based on distance from the opening parenthesis
+(closer = fainter), reaching full color at 20 lines of separation."
   :type 'boolean
   :group 'pearl-paren-style)
 
@@ -433,7 +456,8 @@ CLOSING-POS is the position of the closing parenthesis."
 
 (defun pearl-paren-style--to-dangling ()
   "Convert buffer to dangling style.
-Single-line parens like (foo) remain unchanged."
+Single-line parens like (foo) remain unchanged.
+Creates annotations if `pearl-paren-style-show-annotations' is non-nil."
   (pearl-paren-style--clear-annotations) ; Clear any existing state
   (add-hook 'after-revert-hook #'pearl-paren-style--on-after-revert nil t)
   (save-excursion
@@ -676,7 +700,10 @@ Particularly recommended for:
 
 When `pearl-paren-style-show-annotations' is non-nil, closing
 parentheses will display annotations showing the corresponding
-opening parenthesis location."
+opening parenthesis location.
+
+Annotations are not automatically updated during editing.
+To refresh annotations after making changes, run this command again."
   (interactive)
   (pearl-paren-style--to-dangling))
 
@@ -842,8 +869,6 @@ This restores interactive annotations from permanent comments."
                                 (let ((trimmed (string-trim-left trailing-comment)))
                                   (unless (string-prefix-p pearl-paren-style--annotation-comment-prefix trimmed)
                                     (insert "  " trimmed))))))))))))))))
-      (when (> converted 0)
-        (pearl-paren-style--setup-change-hook))
       (message "Converted %d comment(s) to annotations" converted))))
 
 ;;;###autoload
