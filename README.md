@@ -23,7 +23,7 @@ Annotations are for Emacs sessions. Comments are for everywhere else — AI tool
 
 ## The Workflow
 
-```
+<pre>
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Compact code   │────▶│  Dangling style │────▶│  Dangling style │
 │  (commit-ready) │     │  + annotations  │     │  + comments     │
@@ -38,7 +38,7 @@ Annotations are for Emacs sessions. Comments are for everywhere else — AI tool
          │                                               │
          └───────────────────────────────────────────────┘
                       Convert back to compact
-```
+</pre>
 
 **Commands:**
 
