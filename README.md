@@ -14,15 +14,16 @@ Lisp nesting is **implicit** in compact style. Humans read indentation, but AI t
 
 **Two audiences, two representations:**
 
-| Audience | Needs | Format |
-|----------|-------|--------|
+| Audience  | Needs                               | Format                                 |
+|-----------|-------------------------------------|----------------------------------------|
 | **Human** | Visual structure, no code pollution | Dangling style + annotations (overlay) |
-| **AI** | Explicit structural hints in text | Dangling style + comments (permanent) |
+| **AI**    | Explicit structural hints in text   | Dangling style + comments (permanent)  |
 
 Annotations are for Emacs sessions. Comments are for everywhere else — AI tools, GitHub, code review, documentation.
 
 ## The Workflow
 
+```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Compact code   │────▶│  Dangling style │────▶│  Dangling style │
 │  (commit-ready) │     │  + annotations  │     │  + comments     │
@@ -37,6 +38,7 @@ Annotations are for Emacs sessions. Comments are for everywhere else — AI tool
          │                                               │
          └───────────────────────────────────────────────┘
                       Convert back to compact
+```
 
 **Commands:**
 
@@ -141,18 +143,18 @@ Clone and add to load path:
   (let ((x 1))
     (when x
       (print x)
-    )         <- 3:4 (when x
-  )           <- 1:2 (let ((x 1))
-)             <- 0:0 (defun example ()
+    ) ← 3:4 (when x⟩
+  ) ← 2:2 (let ((x 1))⟩
+) ← 1:0 (defun example ()⟩
 
 ;; Dangling with comments (for AI tools outside Emacs)
 (defun example ()
   (let ((x 1))
     (when x
       (print x)
-    )  ;; <- 3:4 (when x
-  )  ;; <- 1:2 (let ((x 1))
-)  ;; <- 0:0 (defun example ()
+    )  ;; ← 3:4 (when x⟩
+  )  ;; ← 2:2 (let ((x 1))⟩
+)  ;; ← 1:0 (defun example ()⟩
 
 ;; Compact (after AI coding, commit-ready)
 (defun example ()
@@ -178,15 +180,15 @@ Existing comments are preserved during conversion:
 ```elisp
 ;; Before
 (defun example ()
-  (let ((x 1))        ; initialize
-    (print x)))       ; output
+  (let ((x 1))  ; initialize
+    (print x)))  ; output
 
 ;; After
 (defun example ()
-  (let ((x 1))        ; initialize
-    (print x)         ; output
-  )                   ; end let
-)
+  (let ((x 1))  ; initialize
+    (print x)
+  )
+)  ; output
 ```
 
 ## Configuration
