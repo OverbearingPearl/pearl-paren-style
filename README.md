@@ -60,8 +60,7 @@ Annotations are for Emacs sessions. Comments are for everywhere else — AI tool
 
 **Status**: Unverified. No controlled experiments. Based on:
 - General CS principle: explicit structure reduces ambiguity
-- Anecdotal reports from early users (n=12)
-- Sarwar et al. (2020): structural explicitness helps transformers on *unrelated tasks*
+- Anecdotal reports from early users
 
 **Risk**: Zero. Fully reversible. Try it, see if it helps, ignore if not.
 
