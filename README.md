@@ -2,6 +2,16 @@
 
 Toggle Lisp paren style between compact and dangling layouts.
 
+## The Problem in One Picture
+
+| Compact Style (AI Fails)                  | Dangling Style (AI Succeeds)                     |
+|:-----------------------------------------:|:------------------------------------------------:|
+| ![fail](docs/screenshot-compact-fail.png) | ![success](docs/screenshot-dangling-success.png) |
+| `Only 3 reflections allowed, stopping`    | `Applied edit successfully`                      |
+| **3 retries → gives up**                 | **1 try → clean apply**                         |
+
+Then: `M-x pearl-paren-style-compact` → back to compact, zero git noise.
+
 ## The Problem: AI Can't Read Your Mind
 
 AI coding tools (Aider, Copilot, Claude) struggle with Lisp's dense `)))`.
