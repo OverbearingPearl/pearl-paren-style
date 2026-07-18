@@ -48,7 +48,7 @@
 ;; - pearl-paren-style-dangling-files: Convert files/directories to dangling style
 ;; - pearl-paren-style-convert-files: Interactive style selection for files
 ;;
-;; Annotation and Comment Conversion:
+;; Annotation and Comment Conversion (The AI Bridge):
 ;; - pearl-paren-style-annotations-to-comments: Convert overlays to permanent comments
 ;; - pearl-paren-style-comments-to-annotations: Restore overlays from comments
 ;;
@@ -60,8 +60,11 @@
 ;;
 ;; Suggested workflow for AI coding:
 ;; 1. M-x pearl-paren-style-dangling
-;; 2. Generate/modify code with AI tools
-;; 3. M-x pearl-paren-style-compact before committing
+;; 2. (Optional) M-x pearl-paren-style-annotations-to-comments
+;;    - Makes bracket correspondence visible to AI tools during generation
+;;    - Trade-off: increases token usage; skip if AI handles dangling style well
+;; 3. Generate/modify code with AI tools
+;; 4. M-x pearl-paren-style-compact before committing
 ;;
 ;; For detailed examples and configuration, see README.md.
 
