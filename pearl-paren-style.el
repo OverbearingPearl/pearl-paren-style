@@ -901,7 +901,11 @@ This restores interactive annotations from permanent comments."
     (load (expand-file-name "pearl-paren-style" dir) nil t)
     ;; Load test files
     (load (expand-file-name "test-pearl-paren-style" dir) nil t))
-  (ert t))
+
+  ;; Use batch-compatible function to ensure output is visible in terminal
+  (if noninteractive
+      (ert-run-tests-batch-and-exit)
+    (ert t)))
 
 ;;;###autoload
 (defun pearl-paren-style-dwim ()
