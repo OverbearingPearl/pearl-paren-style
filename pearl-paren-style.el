@@ -925,12 +925,12 @@ This restores interactive annotations from permanent comments."
   (cond
    ;; Case 1: region is active
    ((use-region-p)
-    (call-interactively 'pearl-paren-style-convert-region))
+    (call-interactively #'pearl-paren-style-convert-region))
 
    ;; Case 2: files/directories are selected in Dired
    ((and (derived-mode-p 'dired-mode)
          (dired-get-marked-files))
-    (call-interactively 'pearl-paren-style-convert-files))
+    (call-interactively #'pearl-paren-style-convert-files))
 
    ;; Case 3: default (entire buffer)
    (t
