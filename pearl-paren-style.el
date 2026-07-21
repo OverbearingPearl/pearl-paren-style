@@ -7,6 +7,7 @@
 ;; Package-Requires: ((emacs "25.1"))
 ;; Keywords: lisp, tools, convenience, parentheses, formatting
 ;; URL: https://github.com/OverbearingPearl/pearl-paren-style
+;; SPDX-License-Identifier: GPL-3.0-or-later
 
 ;;; Commentary:
 
@@ -71,6 +72,10 @@
 ;; For detailed examples and configuration, see README.md.
 
 ;;; Code:
+
+;; Silence byte-compiler warnings about dired and ert functions
+(declare-function dired-get-marked-files "dired")
+(declare-function ert-delete-all-tests "ert")
 
 (require 'cl-lib)
 (require 'color)
@@ -249,8 +254,8 @@ Returns the created overlay or nil."
     ;; Parse comment text to extract annotation information
     (when (string-match (concat "\\([0-9]+\\):\\([0-9]+\\) \\(.*" (regexp-quote pearl-paren-style--annotation-end) "\\)") comment-text)
       (let* ((open-line (string-to-number (match-string 1 comment-text)))
-             (open-col (string-to-number (match-string 2 comment-text)))
-             (open-text (match-string 3 comment-text))  ; already includes ⟩
+             (_open-col (string-to-number (match-string 2 comment-text))) ; unused
+             (_open-text (match-string 3 comment-text)) ; unused
              (close-line (line-number-at-pos closing-pos))
              (line-distance (- close-line open-line))
              (annotation-text (concat " ← " comment-text))
@@ -269,7 +274,7 @@ comment-text contains only the annotation detail, not trailing user comments."
   (let (result)
     (save-excursion
       (goto-char (point-min))
-      (while (and (< (point) (point-max))
+      (while (and (not (eobp))
                   (re-search-forward (regexp-quote pearl-paren-style--annotation-comment-prefix)
                                      nil t))
         (let ((comment-start (match-beginning 0))
@@ -277,7 +282,7 @@ comment-text contains only the annotation detail, not trailing user comments."
           (save-excursion
             (goto-char comment-start)
             (skip-chars-backward " \t")
-            (when (and (> (point) (point-min))
+            (when (and (not (bobp))
                        (= (char-before) ?\)))
               (let* ((closing-pos (1- (point)))
                      (line-end (line-end-position))
@@ -354,19 +359,19 @@ TARGET-COL is the target column for dangling."
   (and (looking-back "^\\s-*" line-start)
        (= current-col target-col)))
 
-(defun pearl-paren-style--dangle-fix-indent (line-start target-col)
+(defun pearl-paren-style--dangle-fix-indent (_line-start target-col)
   "Fix indentation for a paren already on its own line.
-LINE-START is the position at the beginning of the line.
+_LINE-START is the position at the beginning of the line (unused).
 TARGET-COL is the target column for indentation."
   (save-excursion
     (beginning-of-line)
     (delete-horizontal-space)
     (indent-to target-col)))
 
-(defun pearl-paren-style--dangle-move-to-new-line (open-pos closing-pos target-col)
+(defun pearl-paren-style--dangle-move-to-new-line (_open-pos closing-pos target-col)
   "Move paren at CLOSING-POS to a new line with TARGET-COL indent.
 Handles trailing comments.
-OPEN-POS is the position of the opening parenthesis.
+_OPEN-POS is the position of the opening parenthesis (unused).
 CLOSING-POS is the position of the closing parenthesis.
 TARGET-COL is the target column for indentation."
   (let* ((end-of-line (line-end-position))
@@ -397,7 +402,7 @@ TARGET-COL is the target column for indentation."
   (save-excursion
     (beginning-of-line)
     (skip-chars-forward " \t")
-    (while (and (not (eolp))
+    (while (and (not (eobp))
                 (or (= (char-after) ?\()
                     (= (char-after) ?\))))
       (forward-char)
@@ -431,7 +436,8 @@ END is the end position of the region."
 
 (defun pearl-paren-style--classify-closing-paren (closing-pos)
   "Classify the closing paren at CLOSING-POS.
-Returns 'dangling, 'compact, or nil if it should be ignored (e.g., single-line or backquote).
+Returns \\='dangling, \\='compact, or nil if it should be ignored.
+Examples: single-line or backquote forms are ignored.
 CLOSING-POS is the position of the closing parenthesis."
   (let ((open-pos (condition-case nil
                      (save-excursion
@@ -623,7 +629,7 @@ CLOSING-POS is the position of the closing parenthesis."
 Returns (success . file) if successful, (error . message) for external errors.
 Signals internal logic errors directly.
 FILE is the path to the file to process.
-STYLE is either 'compact or 'dangling."
+STYLE is either \\='compact or \\='dangling."
   (cond
    ((not (file-exists-p file))
     (cons 'error (format "File not found: %s" file)))
@@ -678,7 +684,7 @@ Return list of files, preferring Dired marked files when in Dired mode."
 
 (defun pearl-paren-style--with-el-files (files style)
   "Process .el FILES with STYLE, handling collection, confirmation, and reporting.
-STYLE is 'compact or 'dangling.
+STYLE is \\='compact or \\='dangling.
 FILES is a list of file paths."
   (let ((el-files (pearl-paren-style--collect-el-files files)))
     (when (null el-files)
@@ -729,7 +735,7 @@ To refresh annotations after making changes, run this command again."
 
 ;;;###autoload
 (defun pearl-paren-style-convert (style)
-  "Convert to STYLE ('compact or 'dangling)."
+  "Convert to STYLE (\\='compact or \\='dangling)."
   (interactive
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))))
   (pcase style
@@ -772,7 +778,7 @@ To refresh annotations after making changes, run this command again."
 
 ;;;###autoload
 (defun pearl-paren-style-convert-region (style beg end)
-  "Convert region from BEG to END to STYLE ('compact or 'dangling)."
+  "Convert region from BEG to END to STYLE (\\='compact or \\='dangling)."
   (interactive
    (list (intern (completing-read "Convert to: " '("compact" "dangling") nil t))
          (region-beginning)
@@ -806,7 +812,7 @@ If called interactively without Dired selection, prompt for files."
 
 ;;;###autoload
 (defun pearl-paren-style-convert-files (style files)
-  "Convert FILES to STYLE ('compact or 'dangling).
+  "Convert FILES to STYLE (\\='compact or \\='dangling).
 FILES is a list of file paths.
 If called interactively without Dired selection, prompt for files."
   (interactive
@@ -863,7 +869,7 @@ This restores interactive annotations from permanent comments."
             (save-excursion
               (goto-char comment-start)
               (skip-chars-backward " \t")
-              (when (and (> (point) (point-min))
+              (when (and (not (bobp))
                          (= (char-before) ?\)))
                 (let ((closing-pos (1- (point))))
                   (when (not (pearl-paren-style--in-string-or-comment-p closing-pos))
