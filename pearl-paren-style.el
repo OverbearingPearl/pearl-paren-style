@@ -293,6 +293,11 @@ comment-text contains only the annotation detail, not trailing user comments."
                   (push (cons closing-pos comment-text) result))))))))
     (nreverse result)))
 
+(defun pearl-paren-style--annotation-enabled-p ()
+  "Return non-nil if annotations are enabled.
+This is a convenience function used by tests."
+  pearl-paren-style-show-annotations)
+
 (defun pearl-paren-style--create-annotation-overlay (closing-pos)
   "Create annotation overlay for closing parenthesis at CLOSING-POS.
 Returns the overlay or nil if no annotation needed."
@@ -900,7 +905,7 @@ This restores interactive annotations from permanent comments."
     ;; Reload source files (force load .el, ignore .elc)
     (load (expand-file-name "pearl-paren-style" dir) nil t)
     ;; Load test files
-    (load (expand-file-name "test-pearl-paren-style" dir) nil t))
+    (load (expand-file-name "pearl-paren-style-test" dir) nil t))
 
   ;; Use batch-compatible function to ensure output is visible in terminal
   (if noninteractive
