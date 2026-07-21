@@ -98,7 +98,7 @@
 When non-nil, closing parentheses in dangling style will display
 annotations showing the corresponding opening parenthesis location.
 Annotations fade based on distance from the opening parenthesis
-(closer = fainter), reaching full color at 20 lines of separation."
+\(closer = fainter), reaching full color at 20 lines of separation."
   :type 'boolean
   :group 'pearl-paren-style)
 
