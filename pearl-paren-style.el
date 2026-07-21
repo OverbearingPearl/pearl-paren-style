@@ -21,7 +21,7 @@
 ;; Features:
 ;;
 ;; - Convert between compact and dangling styles
-;; - Annotation display for dangling style showing opening parenthesis location
+;; - Annotation display for dangling style showing opening \(parenthesis location
 ;;   with distance-based color gradient (closer = fainter, 20 lines = full color)
 ;; - Preserves single-line expressions like (foo)
 ;; - Handles inline and trailing comments
@@ -402,7 +402,7 @@ TARGET-COL is the target column for indentation."
   (save-excursion
     (beginning-of-line)
     (skip-chars-forward " \t")
-    (while (and (not (eobp))
+    (while (and (not (eolp))
                 (or (= (char-after) ?\()
                     (= (char-after) ?\))))
       (forward-char)
@@ -595,7 +595,7 @@ CLOSING-POS is the position of the closing parenthesis."
   (save-excursion
     (goto-char (point-max))
     (skip-chars-backward "\n")
-    (when (< (point) (point-max))
+    (unless (eobp)
       (delete-region (point) (point-max))
       (insert "\n"))))
 
