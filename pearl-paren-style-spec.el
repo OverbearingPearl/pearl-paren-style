@@ -1192,7 +1192,7 @@
       (insert original)
       (let ((before (buffer-string))
             (before-detect (pearl-paren-style--detect)))
-        (call-interactively 'pearl-paren-style-dwim)
+        (call-interactively #'pearl-paren-style-dwim)
         (let ((result (buffer-string))
               (after-detect (pearl-paren-style--detect)))
           (ert-info ((format "Before:\n%s\nDetected: %s\n\nAfter DWIM (no region):\n%s\nDetected: %s"
@@ -1706,7 +1706,7 @@
               (should (> overlay-count 0)))))))))
 
 (ert-deftest pearl-paren-style-spec-annotation-disabled ()
-  "Annotation disabled when pearl-paren-style-show-annotations is nil."
+  "Annotation disabled when `pearl-paren-style-show-annotations' is nil."
   (with-temp-buffer
     (emacs-lisp-mode)
     (let ((pearl-paren-style-show-annotations nil)
