@@ -2112,7 +2112,9 @@
             (ert-info ((format "Step 1 - Original:\n%s\n\nStep 1 - After to-dangling:\n%s\n\nStep 1 - After to-comment:\n%s"
                                 original after-dangling after-comment))
               ;; Verify comment format (with end marker)
-              (should (string-match-p ")  ;; ← [0-9]+:[0-9]+ .*⟩" after-comment)))
+              (should (string-match-p ")  ;; ← [0-9]+:[0-9]+ .*⟩" after-comment))
+              ;; Verify overlays cleared
+              (should (null pearl-paren-style--annotation-overlays)))
             ;; Convert back to annotations
             (pearl-paren-style-comments-to-annotations)
             (let ((after-to-annotation (buffer-string))
@@ -2142,7 +2144,9 @@
           (pearl-paren-style-annotations-to-comments)
           (let ((original-comment (buffer-string)))
             (ert-info ((format "Step 1 - Original:\n%s\n\nStep 1 - After to-dangling:\n%s\n\nStep 1 - After to-comment:\n%s"
-                                original after-dangling original-comment)))
+                               original after-dangling original-comment))
+              (should (string-match-p ";; ← " original-comment))
+              (should (null pearl-paren-style--annotation-overlays)))
             (pearl-paren-style-comments-to-annotations)
             (let ((after-to-annotation (buffer-string))
                   (overlay-count (length pearl-paren-style--annotation-overlays)))
