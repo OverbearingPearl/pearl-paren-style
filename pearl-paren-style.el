@@ -129,8 +129,8 @@ If POS is provided, check at that position instead of current point."
   (save-excursion
     (when pos (goto-char pos))
     (let ((state (syntax-ppss)))
-      (or (nth 3 state)    ; inside string
-          (nth 4 state)    ; inside comment
+      (or (nth 3 state)  ; inside string
+          (nth 4 state)  ; inside comment
           ;; Check for character literal starting with ?\
           (save-excursion
             (and (>= (point) 2)
