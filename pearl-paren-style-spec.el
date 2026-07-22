@@ -143,8 +143,8 @@
     (emacs-lisp-mode)
     ;; Scenario 1: 1 dangling, 100 compact
     (insert "(foo\n  (bar)\n)\n")
-    (dotimes (_i 100)
-      (insert (format "(compact-%d)\n" _i)))
+    (dotimes (i 100)
+      (insert (format "(compact-%d)\n" i)))
     (let ((detected (pearl-paren-style--detect)))
       (ert-info ((format "1 dangling, 100 compact\nDetected: %s" detected))
         ;; New logic: return 'dangling if any dangling exists
@@ -152,18 +152,18 @@
 
     ;; Scenario 2: 0 dangling, 100 compact
     (erase-buffer)
-    (dotimes (_i 100)
-      (insert (format "(compact-%d)\n" _i)))
+    (dotimes (i 100)
+      (insert (format "(compact-%d)\n" i)))
     (let ((detected (pearl-paren-style--detect)))
       (ert-info ((format "0 dangling, 100 compact\nDetected: %s" detected))
         (should (eq detected 'compact))))
 
     ;; Scenario 3: 100 dangling, 100 compact
     (erase-buffer)
-    (dotimes (_i 100)
-      (insert (format "(dangling-%d\n  (inner)\n)\n" _i)))
-    (dotimes (_i 100)
-      (insert (format "(compact-%d)\n" _i)))
+    (dotimes (i 100)
+      (insert (format "(dangling-%d\n  (inner)\n)\n" i)))
+    (dotimes (i 100)
+      (insert (format "(compact-%d)\n" i)))
     (let ((detected (pearl-paren-style--detect)))
       (ert-info ((format "100 dangling, 100 compact\nDetected: %s" detected))
         ;; When equal, new logic (> dangling 0) returns 'dangling
@@ -252,8 +252,7 @@
   "Toggle does not create extra blank lines (dangling to compact)."
   (with-temp-buffer
     (emacs-lisp-mode)
-    (let ((original "(defun outer ()\n  (let ((x 1))\n    (inner\n      (nested)\n    )\n  )\n)")
-          (expected-lines 6))
+    (let ((original "(defun outer ()\n  (let ((x 1))\n    (inner\n      (nested)\n    )\n  )\n)"))
       (insert original)
       (pearl-paren-style-toggle)
       (let ((result (buffer-string)))
@@ -1945,8 +1944,8 @@
     (emacs-lisp-mode)
     (let ((depth 200)
           (code ""))
-      (dotimes (_i depth)
-        (setq code (concat code "(level-" (number-to-string _i) "\n  ")))
+      (dotimes (i depth)
+        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
       (setq code (concat code "(innermost)"))
       (dotimes (_i depth)
         (setq code (concat code "\n  )")))
@@ -1963,8 +1962,8 @@
     (emacs-lisp-mode)
     (let* ((depth 100)
            (original ""))
-      (dotimes (_i depth)
-        (setq original (concat original "(level-" (number-to-string _i) "\n  ")))
+      (dotimes (i depth)
+        (setq original (concat original "(level-" (number-to-string i) "\n  ")))
       (setq original (concat original "(innermost)"))
       (dotimes (_i depth)
         (setq original (concat original "\n  )")))
@@ -1985,7 +1984,7 @@
       (dotimes (i depth)
         (setq code (concat code "(level-" (number-to-string i) "\n  ")))
       (setq code (concat code "(innermost)"))
-      (dotimes (i depth)
+      (dotimes (_i depth)
         (setq code (concat code "\n  )")))
       (insert code)
       (let ((start-time (current-time)))
@@ -2020,11 +2019,11 @@
     (emacs-lisp-mode)
     (let ((depth 50)
           (code ""))
-      (dotimes (_i depth)
-        (setq code (concat code "(level-" (number-to-string _i) "\n  ")))
+      (dotimes (i depth)
+        (setq code (concat code "(level-" (number-to-string i) "\n  ")))
       (setq code (concat code "(innermost)"))
-      (dotimes (_i depth)
-        (setq code (concat code "\n  )  ; comment " (number-to-string _i))))
+      (dotimes (i depth)
+        (setq code (concat code "\n  )  ; comment " (number-to-string i))))
       (insert code)
       (let ((start-time (current-time)))
         (pearl-paren-style--to-dangling)
@@ -2206,11 +2205,11 @@
           ;; First conversion
           (pearl-paren-style-comments-to-annotations)
           (let ((overlay-count (length pearl-paren-style--annotation-overlays))
-                (_after-first (buffer-string)))
+                (after-first (buffer-string)))
             (ert-info ((format "Original:\n%s\n\nComment state:\n%s\n\nAfter first to-annotation:\nOverlay count: %d"
                                 original comment-state overlay-count))
               ;; Suppress unused variable warning by referencing it
-              (should (stringp _after-first)))
+              (should (stringp after-first)))
             ;; Second conversion should be idempotent (no change)
             (should-error (pearl-paren-style-comments-to-annotations) :type 'user-error)
             ;; Overlay count should remain the same
@@ -2370,7 +2369,7 @@
       (insert "(defun f ()\n  (g))\n")
       (pearl-paren-style--update-annotations-full)
       (pearl-paren-style-annotations-to-comments)
-      (let ((_result (buffer-string)))
+      (let ((result (buffer-string)))
         ;; The annotation comment should not have trailing spaces before EOL or next comment
         (goto-char (point-min))
         (while (re-search-forward (regexp-quote pearl-paren-style--annotation-comment-prefix) nil t)
@@ -2378,7 +2377,7 @@
             ;; No double-space at end of annotation text (before EOL)
             (should-not (string-match-p ";; ← .*  $" line))))
         ;; Avoid unused variable warning
-        (should (stringp _result))))))
+        (should (stringp result))))))
 
 (ert-deftest pearl-paren-style-spec-annotation-no-accumulation ()
   "Annotations do not accumulate across multiple toggle cycles."
