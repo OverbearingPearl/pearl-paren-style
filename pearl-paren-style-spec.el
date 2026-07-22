@@ -2148,18 +2148,18 @@
                   (overlay-count (length pearl-paren-style--annotation-overlays)))
               (ert-info ((format "Step 2 - After to-annotation:\n%s\nOverlay count: %d\nComments removed: %s"
                                   after-to-annotation overlay-count
-                                  (not (string-match-p ";; ← " after-to-annotation)))))
-              ;; Verify overlays created
-              (should (> overlay-count 0))
-              ;; Verify comments removed
-              (should-not (string-match-p ";; ← " after-to-annotation)))
+                                  (not (string-match-p ";; ← " after-to-annotation))))
+                ;; Verify overlays created
+                (should (> overlay-count 0))
+                ;; Verify comments removed
+                (should-not (string-match-p ";; ← " after-to-annotation)))
             ;; Convert back to comment
             (pearl-paren-style-annotations-to-comments)
             (let ((final-result (buffer-string)))
               (ert-info ((format "Step 3 - After to-comment again:\n%s\nMatches step 1 result: %s"
-                                  final-result (string= final-result original-comment))))
-              ;; Verify original comment content restored
-              (should (string= final-result original-comment)))))))))
+                                  final-result (string= final-result original-comment)))
+                ;; Verify original comment content restored
+                (should (string= final-result original-comment)))))))))))
 
 (ert-deftest pearl-paren-style-spec-annotation-idempotent ()
   "Multiple annotation-to-comment calls are idempotent."
