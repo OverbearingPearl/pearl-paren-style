@@ -1,12 +1,11 @@
 ;;; pearl-paren-style.el --- Toggle Lisp paren styles between compact and dangling  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2026 OverbearingPearl
-
 ;; Author: OverbearingPearl <OverbearingPearl@outlook.com>
-;; Version: 0.1.6
+;; URL: https://github.com/OverbearingPearl/pearl-paren-style
+;; Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1"))
 ;; Keywords: lisp, tools, convenience, parentheses, formatting
-;; URL: https://github.com/OverbearingPearl/pearl-paren-style
 ;; License: GPL-3.0-or-later
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
